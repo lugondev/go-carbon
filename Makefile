@@ -1,6 +1,6 @@
 # Application
 APP_NAME := carbon
-MODULE := github.com/user/go-carbon
+MODULE := github.com/lugondev/go-carbon
 
 # Version info
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")

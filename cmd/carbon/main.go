@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/user/go-carbon/cmd/carbon/cmd"
+	"github.com/lugondev/go-carbon/cmd/carbon/cmd"
 )
 
 func main() {

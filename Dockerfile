@@ -20,9 +20,9 @@ ARG BUILD_DATE=unknown
 
 # Build the binary
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
-    -ldflags="-w -s -X github.com/user/go-carbon/cmd/carbon/cmd.Version=${VERSION} \
-    -X github.com/user/go-carbon/cmd/carbon/cmd.GitCommit=${GIT_COMMIT} \
-    -X github.com/user/go-carbon/cmd/carbon/cmd.BuildDate=${BUILD_DATE}" \
+    -ldflags="-w -s -X github.com/lugondev/go-carbon/cmd/carbon/cmd.Version=${VERSION} \
+    -X github.com/lugondev/go-carbon/cmd/carbon/cmd.GitCommit=${GIT_COMMIT} \
+    -X github.com/lugondev/go-carbon/cmd/carbon/cmd.BuildDate=${BUILD_DATE}" \
     -o /app/carbon ./cmd/carbon
 
 # Final stage
