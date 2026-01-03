@@ -1,0 +1,10 @@
+# Solana Configuration
+solana:
+  rpc: "https://api.devnet.solana.com"
+  network: "devnet"
+  timeout: 30
+
+# Logging
+log:
+  level: "info"
+  format: "text"  # json or text

@@ -1,0 +1,43 @@
+services:
+  carbon:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VERSION: ${VERSION:-dev}
+        GIT_COMMIT: ${GIT_COMMIT:-none}
+        BUILD_DATE: ${BUILD_DATE:-unknown}
+    image: go-carbon:latest
+    container_name: carbon-cli
+    environment:
+      - CARBON_RPC=${SOLANA_RPC:-https://api.devnet.solana.com}
+      - CARBON_NETWORK=${SOLANA_NETWORK:-devnet}
+    volumes:
+      - ./configs:/app/configs:ro
+      - carbon-data:/app/data
+    networks:
+      - carbon-network
+
+  # Solana local validator for development
+  solana-validator:
+    image: solanalabs/solana:v1.18.26
+    container_name: solana-validator
+    command: solana-test-validator
+    ports:
+      - "8899:8899"   # JSON RPC
+      - "8900:8900"   # Websocket
+      - "9900:9900"   # Faucet
+    volumes:
+      - solana-ledger:/root/.config/solana
+    networks:
+      - carbon-network
+    profiles:
+      - dev
+
+volumes:
+  carbon-data:
+  solana-ledger:
+
+networks:
+  carbon-network:
+    driver: bridge
