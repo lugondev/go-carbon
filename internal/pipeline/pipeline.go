@@ -38,7 +38,6 @@ import (
 	"github.com/lugondev/go-carbon/internal/instruction"
 	"github.com/lugondev/go-carbon/internal/metrics"
 	"github.com/lugondev/go-carbon/internal/transaction"
-	"github.com/lugondev/go-carbon/pkg/types"
 )
 
 // ShutdownStrategy defines the shutdown behavior for the pipeline.
@@ -497,25 +496,7 @@ func (p *Pipeline) extractInstructionsWithMetadata(
 	return result
 }
 
-// compiledToInstruction converts a compiled instruction to a full instruction.
-func (p *Pipeline) compiledToInstruction(
-	compiled interface{},
-	accountKeys []types.Pubkey,
-) *types.Instruction {
-	// This is a simplified implementation - in practice you'd need to handle
-	// the specific transaction format from solana-go
-	return nil
-}
-
-// compiledInnerToInstruction converts a compiled inner instruction to a full instruction.
-func (p *Pipeline) compiledInnerToInstruction(
-	inner types.InnerInstruction,
-	accountKeys []types.Pubkey,
-) *types.Instruction {
-	// This is a simplified implementation - in practice you'd need to handle
-	// the specific transaction format from solana-go
-	return nil
-}
+// Instruction compilation methods are implemented in instruction_compiler.go
 
 // processAccountDeletion processes an account deletion through all deletion pipes.
 func (p *Pipeline) processAccountDeletion(
