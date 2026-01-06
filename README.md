@@ -84,7 +84,8 @@ go get github.com/lugondev/go-carbon
 
 ## 📚 Documentation
 
-- [Plugin Development Guide](docs/PLUGIN_DEVELOPMENT.md) - Create custom event decoders
+- [Code Generation](docs/codegen.md) - Generate Go code from Anchor IDL
+- [Plugin Development](docs/plugin-development.md) - Create custom event decoders
 - [Architecture](docs/architecture.md) - System architecture overview
 - [Examples](examples/) - Complete working examples
 
@@ -250,6 +251,67 @@ registry.Initialize(ctx)
 
 See [Plugin Development Guide](docs/PLUGIN_DEVELOPMENT.md) for complete documentation.
 
+## 🛠️ Code Generation from IDL
+
+Generate Go code from Anchor IDL JSON files:
+
+```bash
+# Generate from IDL file
+carbon codegen --idl ./target/idl/my_program.json --output ./pkg/myprogram
+
+# With custom package name
+carbon codegen -i idl.json -o ./generated/swap -p tokenswap
+```
+
+### Generated Files
+
+| File | Description |
+|------|-------------|
+| `program.go` | Program ID, plugin factory, decoder registry |
+| `types.go` | Custom types (structs, enums) |
+| `accounts.go` | Account structs with discriminators |
+| `events.go` | Event structs, decoders, decoder factory |
+| `instructions.go` | Instruction structs with accounts |
+
+### Using Generated Code
+
+```go
+package main
+
+import (
+    "context"
+    
+    "github.com/gagliardetto/solana-go"
+    "github.com/yourorg/myprogram/generated/tokenswap"
+    "github.com/lugondev/go-carbon/pkg/plugin"
+)
+
+func main() {
+    // Create plugin registry
+    registry := plugin.NewRegistry()
+    
+    // Register the generated plugin
+    programID := tokenswap.ProgramID
+    registry.MustRegister(tokenswap.NewTokenSwapPlugin(programID))
+    
+    // Initialize
+    ctx := context.Background()
+    registry.Initialize(ctx)
+    
+    // Or use decoder registry directly
+    decoderRegistry := tokenswap.GetDecoderRegistry(programID)
+    
+    // Decode events from transaction logs
+    events, _ := decoderRegistry.DecodeAll(programDataList, &programID)
+    for _, event := range events {
+        switch e := event.Data.(type) {
+        case *tokenswap.SwapExecutedEvent:
+            fmt.Printf("Swap: %d -> %d\n", e.AmountIn, e.AmountOut)
+        }
+    }
+}
+```
+
 ## 📋 Examples
 
 ### Complete Examples
@@ -259,6 +321,7 @@ See [Plugin Development Guide](docs/PLUGIN_DEVELOPMENT.md) for complete document
 - [Pipeline with Events](examples/pipeline-with-events/) - Full integration
 - [Token Tracker](examples/token-tracker/) - Track token transfers
 - [Alerts](examples/alerts/) - Alert system for specific events
+- [Code Generation](examples/codegen/) - Generate code from IDL
 
 ### Running Examples
 
@@ -268,6 +331,9 @@ go run examples/event-parser/main.go
 
 # Run pipeline with events
 go run examples/pipeline-with-events/main.go
+
+# Run codegen example
+go run examples/codegen/main.go
 ```
 
 ## 🏗️ Architecture
@@ -356,10 +422,11 @@ go test ./pkg/plugin/...
 
 ## 📊 Project Statistics
 
-- **Total Code**: ~7,500+ lines of Go
+- **Total Code**: ~8,000+ lines of Go
 - **Public Packages**: 3 (`log`, `decoder`, `plugin`)
 - **Built-in Plugins**: 2 (SPL Token, Anchor)
-- **Examples**: 5
+- **CLI Tools**: codegen, wallet
+- **Examples**: 6
 - **Test Coverage**: Target >80% (work in progress)
 
 ## 🛣️ Roadmap
@@ -378,6 +445,7 @@ go test ./pkg/plugin/...
 - [x] Anchor event plugin
 - [x] Comprehensive examples
 - [x] Plugin development documentation
+- [x] **Code generation from Anchor IDL**
 
 ### 🚧 In Progress
 
@@ -392,7 +460,6 @@ go test ./pkg/plugin/...
 - [ ] WebSocket live updates
 - [ ] GraphQL API
 - [ ] Database integrations (PostgreSQL, MongoDB)
-- [ ] CLI improvements
 - [ ] Performance benchmarks
 
 ## 🤝 Contributing
