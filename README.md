@@ -1,9 +1,17 @@
 # Go-Carbon
 
+[![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8?style=flat&logo=go)](https://go.dev/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Code Generation](https://img.shields.io/badge/Codegen-Jennifer-blue?style=flat)](docs/codegen.md)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+
 A lightweight, modular Solana blockchain indexing framework written in Go. Go-Carbon is a Go port of the [Carbon](https://github.com/sevenlabs-hq/carbon) framework, providing a flexible pipeline architecture for processing Solana blockchain data.
+
+> 🚀 **NEW**: Jennifer-based code generator for type-safe Go code from Anchor IDL! See [Code Generation](#-code-generation-from-idl) below.
 
 ## ✨ Features
 
+- **🔥 Type-Safe Code Generation**: Generate production-ready Go code from Anchor IDL with Jennifer
 - **Modular Pipeline Architecture**: Flexible data processing with configurable datasources, processors, and pipes
 - **Multiple Data Types**: Support for account updates, transactions, account deletions, and block details
 - **Generic Processors**: Type-safe processors with Go generics
@@ -253,7 +261,9 @@ See [Plugin Development Guide](docs/PLUGIN_DEVELOPMENT.md) for complete document
 
 ## 🛠️ Code Generation from IDL
 
-Generate Go code from Anchor IDL JSON files:
+**NEW**: Generate type-safe Go code from Anchor IDL JSON files using our Jennifer-based generator!
+
+### Quick Start
 
 ```bash
 # Generate from IDL file
@@ -263,15 +273,59 @@ carbon codegen --idl ./target/idl/my_program.json --output ./pkg/myprogram
 carbon codegen -i idl.json -o ./generated/swap -p tokenswap
 ```
 
-### Generated Files
+### What's Generated?
 
-| File | Description |
-|------|-------------|
-| `program.go` | Program ID, plugin factory, decoder registry |
-| `types.go` | Custom types (structs, enums) |
-| `accounts.go` | Account structs with discriminators |
-| `events.go` | Event structs, decoders, decoder factory |
-| `instructions.go` | Instruction structs with accounts |
+| File | Description | Features |
+|------|-------------|----------|
+| `program.go` | Program ID, plugin factory, decoder registry | ✅ Ready-to-use plugin |
+| `types.go` | Custom types (structs, enums) | ✅ Borsh serialization |
+| `accounts.go` | Account structs with discriminators | ✅ Type-safe decoding |
+| `events.go` | Event structs, decoders, factory | ✅ Anchor discriminators |
+| `instructions.go` | Instruction builders with accounts | ✅ Instruction builders |
+
+### Generator Highlights
+
+✨ **Jennifer-Powered**: Type-safe code generation, no templates  
+🎯 **Zero Config**: Works with any Anchor IDL (v0.1.0 - v0.29+)  
+🔒 **Type Safety**: Full Go type checking at compile time  
+📦 **Borsh Support**: Built-in Borsh serialization tags  
+🔑 **Discriminators**: Automatic Anchor discriminator handling  
+🏗️ **Clean Code**: Production-ready, `gofmt` formatted  
+
+### Example: From IDL to Working Code
+
+**Input**: `token_swap.idl.json`
+```json
+{
+  "name": "token_swap",
+  "instructions": [
+    {
+      "name": "swap",
+      "accounts": [...],
+      "args": [...]
+    }
+  ],
+  "events": [...]
+}
+```
+
+**Output**: Ready-to-use Go package
+```go
+// Use generated code immediately
+registry := plugin.NewRegistry()
+registry.MustRegister(tokenswap.NewTokenSwapPlugin(programID))
+
+// Decode events from logs
+events, _ := tokenswap.GetDecoderRegistry(programID).DecodeAll(logs, &programID)
+
+// Build instructions with type safety
+swapIx := tokenswap.NewSwapInstructionBuilder().
+    SetAmountIn(1000000).
+    SetMinAmountOut(950000).
+    Build()
+```
+
+📖 **Full Documentation**: [Code Generation Guide](docs/codegen.md) | [Migration Guide](docs/MIGRATION.md)
 
 ### Using Generated Code
 

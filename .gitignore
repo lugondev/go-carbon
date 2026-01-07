@@ -57,3 +57,12 @@ test-ledger/
 # Debug
 debug
 __debug_bin
+
+# Example binaries
+examples/*/codegen
+examples/*/example
+examples/*/token-tracker
+examples/*/alerts
+examples/*/basic
+examples/*/event-parser
+examples/*/pipeline-with-events
