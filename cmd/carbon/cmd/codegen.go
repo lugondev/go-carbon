@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/lugondev/go-carbon/internal/codegen"
+	"github.com/lugondev/go-carbon/internal/codegen/gen"
 	"github.com/spf13/cobra"
 )
 
@@ -58,16 +59,18 @@ func runCodegen(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to resolve output path: %w", err)
 	}
 
-	generator := codegen.NewGenerator(idl, packageName, absOutputDir)
+	if packageName == "" {
+		packageName = idl.Metadata.Name
+	}
 
 	fmt.Printf("Generating code from IDL: %s\n", absIDLPath)
 	fmt.Printf("  Program: %s (v%s)\n", idl.Metadata.Name, idl.Metadata.Version)
 	fmt.Printf("  Address: %s\n", idl.Address)
 	fmt.Printf("  Output:  %s\n", absOutputDir)
-	fmt.Printf("  Package: %s\n", generator.PackageName)
+	fmt.Printf("  Package: %s\n", packageName)
 	fmt.Println()
 
-	if err := generator.Generate(); err != nil {
+	if err := gen.GenerateAll(idl, packageName, absOutputDir); err != nil {
 		return fmt.Errorf("code generation failed: %w", err)
 	}
 
