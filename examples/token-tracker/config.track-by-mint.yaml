@@ -1,0 +1,60 @@
+# Token Tracker - Track by Mint Example
+# This config tracks ALL movements for specific token mints
+
+rpc:
+  endpoint: "https://solana.magiceden.dev"
+  poll_interval: 3
+  timeout: 30
+
+# Leave accounts empty when using track_by_mint
+accounts: []
+
+# Track ALL movements for these mints
+track_by_mint:
+  enabled: true
+  mints:
+    # USDC - Circle USD Coin
+    - "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+  max_accounts: 5
+  refresh_interval: 60
+
+target_mints:
+  enabled: false
+  mints: []
+
+alerts:
+  enabled: true
+  threshold: 1000000
+  alert_new_accounts: true
+  alert_state_changes: true
+
+metrics:
+  flush_interval: 15
+  backend: "log"
+  track:
+    token_updates: true
+    mint_updates: true
+    significant_transfers: true
+    account_balances: true
+
+pipeline:
+  buffer_size: 500
+  graceful_shutdown: true
+  shutdown_timeout: 30
+
+logging:
+  level: "info"
+  format: "text"
+  structured: true
+  verbose:
+    include_slot: true
+    include_timestamp: true
+    include_pubkey: true
+
+advanced:
+  worker_count: 4
+  experimental:
+    track_mint_supply: true
+    decode_token_extensions: false
+    enable_caching: false
+    cache_size: 1000

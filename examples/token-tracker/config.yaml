@@ -1,0 +1,121 @@
+# Token Tracker Configuration
+# This file configures the token tracking example for monitoring SPL Token accounts
+
+# RPC Configuration
+rpc:
+  # Solana RPC endpoint
+  # Options: 
+  #   - https://api.devnet.solana.com (Devnet)
+  #   - https://api.mainnet-beta.solana.com (Mainnet - rate limited)
+  #   - Your own RPC endpoint (recommended for production)
+  # endpoint: "https://api.mainnet-beta.solana.com"
+  endpoint: "https://solana.magiceden.dev"
+  
+  # How often to poll for account updates (in seconds)
+  poll_interval: 3
+  
+  # Request timeout (in seconds)
+  timeout: 30
+
+# Accounts to Monitor
+accounts:
+  - "2wmVCSfPxGPjrnMMn7rchp4uaeoTqN39mXFC2zhPdri9"
+  - "9RfZwn2Prux6QesG1Noo4HzMEBv3rPndJ2bN2Wwd6a7p"
+
+# Track by Mint (Alternative to tracking specific accounts)
+# When enabled, tracks ALL token accounts for specified mints
+# This uses getProgramAccounts which may be rate-limited on public RPCs
+track_by_mint:
+  enabled: false
+  # List of mint addresses to track all movements for
+  mints: []
+    # Example: Track all USDC movements
+    # - "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+  
+  # Maximum number of accounts to track per mint (safety limit)
+  max_accounts: 100
+  
+  # Refresh interval for fetching new accounts (in seconds)
+  refresh_interval: 60
+
+# Target Mints (Optional)
+target_mints:
+  enabled: false
+  mints: []
+
+# Alert Configuration
+alerts:
+  # Enable alerts for significant token movements
+  enabled: true
+  
+  # Threshold for significant transfers (raw token amount)
+  # For tokens with 6 decimals: 1_000_000 = 1 token
+  # For tokens with 9 decimals: 1_000_000_000 = 1 token
+  threshold: 100
+  
+  # Alert on new token accounts
+  alert_new_accounts: true
+  
+  # Alert on account state changes (frozen, closed, etc.)
+  alert_state_changes: true
+
+# Metrics Configuration
+metrics:
+  # How often to flush metrics (in seconds)
+  flush_interval: 15
+  
+  # Metrics backend type
+  # Options: "log" (default), "prometheus", "none"
+  backend: "log"
+  
+  # Track these metrics
+  track:
+    token_updates: true
+    mint_updates: true
+    significant_transfers: true
+    account_balances: true
+
+# Pipeline Configuration
+pipeline:
+  # Channel buffer size for update queue
+  buffer_size: 500
+  
+  # Enable graceful shutdown
+  graceful_shutdown: true
+  
+  # Shutdown timeout (in seconds)
+  shutdown_timeout: 30
+
+# Logging Configuration
+logging:
+  # Log level: debug, info, warn, error
+  level: "info"
+  
+  # Log format: text, json
+  format: "text"
+  
+  # Enable structured logging
+  structured: true
+  
+  # Log additional fields
+  verbose:
+    include_slot: true
+    include_timestamp: true
+    include_pubkey: true
+
+# Advanced Options
+advanced:
+  # Number of worker goroutines for processing
+  worker_count: 4
+  
+  # Enable experimental features
+  experimental:
+    # Track mint supply changes
+    track_mint_supply: true
+    
+    # Decode Token-2022 extensions
+    decode_token_extensions: false
+    
+    # Cache decoded accounts in memory
+    enable_caching: false
+    cache_size: 1000
