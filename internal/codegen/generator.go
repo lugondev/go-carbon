@@ -10,7 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 	"text/template"
-	"unicode"
+
+	"github.com/lugondev/go-carbon/pkg/utils"
 )
 
 type Generator struct {
@@ -21,7 +22,7 @@ type Generator struct {
 
 func NewGenerator(idl *IDL, packageName, outputDir string) *Generator {
 	if packageName == "" {
-		packageName = toSnakeCase(idl.Metadata.Name)
+		packageName = utils.ToSnakeCase(idl.Metadata.Name)
 	}
 	return &Generator{
 		IDL:         idl,
@@ -80,7 +81,7 @@ func (g *Generator) generateTypes() error {
 }
 
 func (g *Generator) generateTypeDef(typeDef IDLTypeDef) string {
-	name := toPascalCase(typeDef.Name)
+	name := utils.ToPascalCase(typeDef.Name)
 
 	if typeDef.Type.Struct != nil {
 		return g.generateStruct(name, typeDef.Type.Struct.Fields, typeDef.Docs)
@@ -102,9 +103,9 @@ func (g *Generator) generateStruct(name string, fields []IDLField, docs []string
 	buf.WriteString(fmt.Sprintf("type %s struct {\n", name))
 
 	for _, field := range fields {
-		fieldName := toPascalCase(field.Name)
+		fieldName := utils.ToPascalCase(field.Name)
 		fieldType := g.idlTypeToGo(field.Type)
-		jsonTag := toSnakeCase(field.Name)
+		jsonTag := utils.ToSnakeCase(field.Name)
 		buf.WriteString(fmt.Sprintf("\t%s %s `json:\"%s\" borsh:\"%s\"`\n", fieldName, fieldType, jsonTag, jsonTag))
 	}
 
@@ -122,7 +123,7 @@ func (g *Generator) generateEnum(name string, variants []IDLEnumVariant, docs []
 
 	buf.WriteString("const (\n")
 	for i, variant := range variants {
-		variantName := fmt.Sprintf("%s%s", name, toPascalCase(variant.Name))
+		variantName := fmt.Sprintf("%s%s", name, utils.ToPascalCase(variant.Name))
 		if i == 0 {
 			buf.WriteString(fmt.Sprintf("\t%s %s = iota\n", variantName, name))
 		} else {
@@ -157,7 +158,7 @@ func (g *Generator) generateAccounts() error {
 
 func (g *Generator) generateAccountDef(account IDLAccountDef) string {
 	var buf bytes.Buffer
-	name := toPascalCase(account.Name)
+	name := utils.ToPascalCase(account.Name)
 	discHex := formatDiscriminator(account.Discriminator)
 
 	for _, doc := range account.Docs {
@@ -230,7 +231,7 @@ func (g *Generator) generateEvents() error {
 
 func (g *Generator) generateEventDef(event IDLEvent) string {
 	var buf bytes.Buffer
-	name := toPascalCase(event.Name)
+	name := utils.ToPascalCase(event.Name)
 	discHex := formatDiscriminator(event.Discriminator)
 
 	for _, doc := range event.Docs {
@@ -241,9 +242,9 @@ func (g *Generator) generateEventDef(event IDLEvent) string {
 
 	buf.WriteString(fmt.Sprintf("type %sEvent struct {\n", name))
 	for _, field := range event.Fields {
-		fieldName := toPascalCase(field.Name)
+		fieldName := utils.ToPascalCase(field.Name)
 		fieldType := g.idlTypeToGo(field.Type)
-		jsonTag := toSnakeCase(field.Name)
+		jsonTag := utils.ToSnakeCase(field.Name)
 		buf.WriteString(fmt.Sprintf("\t%s %s `json:\"%s\" borsh:\"%s\"`\n", fieldName, fieldType, jsonTag, jsonTag))
 	}
 	buf.WriteString("}\n\n")
@@ -262,7 +263,7 @@ func Decode%sEvent(data []byte) (*%sEvent, error) {
 `, name, name, name, name, name, name))
 
 	for _, field := range event.Fields {
-		fieldName := toPascalCase(field.Name)
+		fieldName := utils.ToPascalCase(field.Name)
 		buf.WriteString(g.generateFieldDecoder(fieldName, field.Type, "event"))
 	}
 
@@ -316,14 +317,14 @@ func NewEventDecoders(programID solana.PublicKey) []decoder.Decoder {
 `))
 
 	for _, event := range g.IDL.Events {
-		name := toPascalCase(event.Name)
+		name := utils.ToPascalCase(event.Name)
 		buf.WriteString(fmt.Sprintf("\t\tNew%sDecoder(programID),\n", name))
 	}
 
 	buf.WriteString("\t}\n}\n\n")
 
 	for _, event := range g.IDL.Events {
-		name := toPascalCase(event.Name)
+		name := utils.ToPascalCase(event.Name)
 		buf.WriteString(fmt.Sprintf(`func New%sDecoder(programID solana.PublicKey) decoder.Decoder {
 	return anchor.NewAnchorEventDecoder(
 		"%s",
@@ -363,7 +364,7 @@ func (g *Generator) generateInstructions() error {
 
 func (g *Generator) generateInstructionDef(ix IDLInstruction) string {
 	var buf bytes.Buffer
-	name := toPascalCase(ix.Name)
+	name := utils.ToPascalCase(ix.Name)
 	discHex := formatDiscriminator(ix.Discriminator)
 
 	for _, doc := range ix.Docs {
@@ -374,16 +375,16 @@ func (g *Generator) generateInstructionDef(ix IDLInstruction) string {
 
 	buf.WriteString(fmt.Sprintf("type %sInstruction struct {\n", name))
 	for _, arg := range ix.Args {
-		argName := toPascalCase(arg.Name)
+		argName := utils.ToPascalCase(arg.Name)
 		argType := g.idlTypeToGo(arg.Type)
-		jsonTag := toSnakeCase(arg.Name)
+		jsonTag := utils.ToSnakeCase(arg.Name)
 		buf.WriteString(fmt.Sprintf("\t%s %s `json:\"%s\" borsh:\"%s\"`\n", argName, argType, jsonTag, jsonTag))
 	}
 	buf.WriteString("}\n\n")
 
 	buf.WriteString(fmt.Sprintf("type %sAccounts struct {\n", name))
 	for _, acc := range ix.Accounts {
-		accName := toPascalCase(acc.Name)
+		accName := utils.ToPascalCase(acc.Name)
 		buf.WriteString(fmt.Sprintf("\t%s solana.PublicKey\n", accName))
 	}
 	buf.WriteString("}\n")
@@ -401,7 +402,7 @@ func (g *Generator) generateProgram() error {
 	buf.WriteString("\t\"github.com/lugondev/go-carbon/internal/decoder/anchor\"\n")
 	buf.WriteString(")\n\n")
 
-	programName := toPascalCase(g.IDL.Metadata.Name)
+	programName := utils.ToPascalCase(g.IDL.Metadata.Name)
 	programID := g.IDL.Address
 
 	buf.WriteString(fmt.Sprintf("const ProgramName = \"%s\"\n", g.IDL.Metadata.Name))
@@ -440,7 +441,7 @@ func (g *Generator) idlTypeToGo(t IDLType) string {
 	}
 
 	if t.Defined != nil {
-		return toPascalCase(t.Defined.Name)
+		return utils.ToPascalCase(t.Defined.Name)
 	}
 
 	if t.Option != nil {
@@ -510,59 +511,6 @@ func (g *Generator) writeFile(filename string, content []byte) error {
 	return os.WriteFile(path, formatted, 0644)
 }
 
-func toPascalCase(s string) string {
-	words := splitWords(s)
-	var result strings.Builder
-	for _, word := range words {
-		if len(word) > 0 {
-			result.WriteString(strings.ToUpper(string(word[0])))
-			result.WriteString(strings.ToLower(word[1:]))
-		}
-	}
-	return result.String()
-}
-
-func toSnakeCase(s string) string {
-	words := splitWords(s)
-	for i := range words {
-		words[i] = strings.ToLower(words[i])
-	}
-	return strings.Join(words, "_")
-}
-
-func splitWords(s string) []string {
-	var words []string
-	var current strings.Builder
-
-	for i, r := range s {
-		if r == '_' || r == '-' || r == ' ' {
-			if current.Len() > 0 {
-				words = append(words, current.String())
-				current.Reset()
-			}
-			continue
-		}
-
-		if unicode.IsUpper(r) && i > 0 {
-			prev := rune(s[i-1])
-			if !unicode.IsUpper(prev) && prev != '_' && prev != '-' && prev != ' ' {
-				if current.Len() > 0 {
-					words = append(words, current.String())
-					current.Reset()
-				}
-			}
-		}
-
-		current.WriteRune(r)
-	}
-
-	if current.Len() > 0 {
-		words = append(words, current.String())
-	}
-
-	return words
-}
-
 func formatDiscriminator(disc []byte) string {
 	if len(disc) == 0 {
 		return "0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00"
@@ -584,7 +532,7 @@ func computeEventDiscriminator(eventName string) [8]byte {
 }
 
 func computeInstructionDiscriminator(ixName string) [8]byte {
-	data := []byte(fmt.Sprintf("global:%s", toSnakeCase(ixName)))
+	data := []byte(fmt.Sprintf("global:%s", utils.ToSnakeCase(ixName)))
 	hash := sha256.Sum256(data)
 	var disc [8]byte
 	copy(disc[:], hash[:8])

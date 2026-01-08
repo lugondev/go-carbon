@@ -38,7 +38,11 @@ footer_content: 'Copyright &copy; 2024-2026 Go-Carbon Contributors. Distributed 
 back_to_top: true
 back_to_top_text: "Back to top"
 
-color_scheme: light
+color_scheme: dark
+
+# Enable color scheme toggle button
+color_scheme_toggle:
+  enabled: true
 
 callouts:
   note:

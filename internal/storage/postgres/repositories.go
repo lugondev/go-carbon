@@ -35,7 +35,7 @@ func (r *postgresAccountRepository) SaveBatch(ctx context.Context, accounts []*s
 		return nil
 	}
 
-	batch := &pgx.Batch{}
+	helper := storage.NewPostgresBatchHelper(r.pool)
 	query := `
 		INSERT INTO accounts (id, pubkey, lamports, data, owner, executable, rent_epoch, slot, updated_at, created_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
@@ -43,23 +43,13 @@ func (r *postgresAccountRepository) SaveBatch(ctx context.Context, accounts []*s
 			lamports = $3, data = $4, owner = $5, executable = $6, rent_epoch = $7, slot = $8, updated_at = $9
 	`
 
-	for _, account := range accounts {
+	return helper.BatchInsert(ctx, query, len(accounts), func(batch *pgx.Batch, i int) {
+		account := accounts[i]
 		batch.Queue(query,
 			account.ID, account.Pubkey, account.Lamports, account.Data, account.Owner,
 			account.Executable, account.RentEpoch, account.Slot, account.UpdatedAt, account.CreatedAt,
 		)
-	}
-
-	br := r.pool.SendBatch(ctx, batch)
-	defer br.Close()
-
-	for range accounts {
-		if _, err := br.Exec(); err != nil {
-			return err
-		}
-	}
-
-	return br.Close()
+	})
 }
 
 func (r *postgresAccountRepository) FindByPubkey(ctx context.Context, pubkey string) (*storage.AccountModel, error) {
@@ -162,7 +152,7 @@ func (r *postgresTransactionRepository) SaveBatch(ctx context.Context, transacti
 		return nil
 	}
 
-	batch := &pgx.Batch{}
+	helper := storage.NewPostgresBatchHelper(r.pool)
 	query := `
 		INSERT INTO transactions (id, signature, slot, block_time, fee, is_vote, success, error_message,
 			account_keys, num_instructions, num_inner_instructions, log_messages, compute_units_consumed, created_at)
@@ -173,23 +163,13 @@ func (r *postgresTransactionRepository) SaveBatch(ctx context.Context, transacti
 			log_messages = $12, compute_units_consumed = $13
 	`
 
-	for _, tx := range transactions {
+	return helper.BatchInsert(ctx, query, len(transactions), func(batch *pgx.Batch, i int) {
+		tx := transactions[i]
 		batch.Queue(query,
 			tx.ID, tx.Signature, tx.Slot, tx.BlockTime, tx.Fee, tx.IsVote, tx.Success, tx.ErrorMessage,
 			tx.AccountKeys, tx.NumInstructions, tx.NumInnerInstructions, tx.LogMessages, tx.ComputeUnitsConsumed, tx.CreatedAt,
 		)
-	}
-
-	br := r.pool.SendBatch(ctx, batch)
-	defer br.Close()
-
-	for range transactions {
-		if _, err := br.Exec(); err != nil {
-			return err
-		}
-	}
-
-	return br.Close()
+	})
 }
 
 func (r *postgresTransactionRepository) FindBySignature(ctx context.Context, signature string) (*storage.TransactionModel, error) {
@@ -236,25 +216,16 @@ func (r *postgresTransactionRepository) FindRecent(ctx context.Context, limit in
 }
 
 func (r *postgresTransactionRepository) queryTransactions(ctx context.Context, query string, args ...interface{}) ([]*storage.TransactionModel, error) {
-	rows, err := r.pool.Query(ctx, query, args...)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
+	return QueryMany(r.pool, ctx, query, scanTransaction, args...)
+}
 
-	var transactions []*storage.TransactionModel
-	for rows.Next() {
-		var tx storage.TransactionModel
-		if err := rows.Scan(
-			&tx.ID, &tx.Signature, &tx.Slot, &tx.BlockTime, &tx.Fee, &tx.IsVote, &tx.Success, &tx.ErrorMessage,
-			&tx.AccountKeys, &tx.NumInstructions, &tx.NumInnerInstructions, &tx.LogMessages, &tx.ComputeUnitsConsumed, &tx.CreatedAt,
-		); err != nil {
-			return nil, err
-		}
-		transactions = append(transactions, &tx)
-	}
-
-	return transactions, rows.Err()
+func scanTransaction(rows pgx.Rows) (*storage.TransactionModel, error) {
+	var tx storage.TransactionModel
+	err := rows.Scan(
+		&tx.ID, &tx.Signature, &tx.Slot, &tx.BlockTime, &tx.Fee, &tx.IsVote, &tx.Success, &tx.ErrorMessage,
+		&tx.AccountKeys, &tx.NumInstructions, &tx.NumInnerInstructions, &tx.LogMessages, &tx.ComputeUnitsConsumed, &tx.CreatedAt,
+	)
+	return &tx, err
 }
 
 type postgresInstructionRepository struct {
@@ -278,29 +249,19 @@ func (r *postgresInstructionRepository) SaveBatch(ctx context.Context, instructi
 		return nil
 	}
 
-	batch := &pgx.Batch{}
+	helper := storage.NewPostgresBatchHelper(r.pool)
 	query := `
 		INSERT INTO instructions (id, signature, instruction_index, program_id, data, accounts, is_inner, inner_index, created_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 	`
 
-	for _, inst := range instructions {
+	return helper.BatchInsert(ctx, query, len(instructions), func(batch *pgx.Batch, i int) {
+		inst := instructions[i]
 		batch.Queue(query,
 			inst.ID, inst.Signature, inst.InstructionIndex, inst.ProgramID,
 			inst.Data, inst.Accounts, inst.IsInner, inst.InnerIndex, inst.CreatedAt,
 		)
-	}
-
-	br := r.pool.SendBatch(ctx, batch)
-	defer br.Close()
-
-	for range instructions {
-		if _, err := br.Exec(); err != nil {
-			return err
-		}
-	}
-
-	return br.Close()
+	})
 }
 
 func (r *postgresInstructionRepository) FindBySignature(ctx context.Context, signature string) ([]*storage.InstructionModel, error) {
@@ -379,34 +340,28 @@ func (r *postgresEventRepository) SaveBatch(ctx context.Context, events []*stora
 		return nil
 	}
 
-	batch := &pgx.Batch{}
+	marshaledData := make([][]byte, len(events))
+	for i, event := range events {
+		dataJSON, err := json.Marshal(event.Data)
+		if err != nil {
+			return fmt.Errorf("failed to marshal event data at index %d: %w", i, err)
+		}
+		marshaledData[i] = dataJSON
+	}
+
+	helper := storage.NewPostgresBatchHelper(r.pool)
 	query := `
 		INSERT INTO events (id, signature, program_id, event_name, data, slot, block_time, created_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 	`
 
-	for _, event := range events {
-		dataJSON, err := json.Marshal(event.Data)
-		if err != nil {
-			return fmt.Errorf("failed to marshal event data: %w", err)
-		}
-
+	return helper.BatchInsert(ctx, query, len(events), func(batch *pgx.Batch, i int) {
+		event := events[i]
 		batch.Queue(query,
 			event.ID, event.Signature, event.ProgramID, event.EventName,
-			dataJSON, event.Slot, event.BlockTime, event.CreatedAt,
+			marshaledData[i], event.Slot, event.BlockTime, event.CreatedAt,
 		)
-	}
-
-	br := r.pool.SendBatch(ctx, batch)
-	defer br.Close()
-
-	for range events {
-		if _, err := br.Exec(); err != nil {
-			return err
-		}
-	}
-
-	return br.Close()
+	})
 }
 
 func (r *postgresEventRepository) FindBySignature(ctx context.Context, signature string) ([]*storage.EventModel, error) {
@@ -438,32 +393,26 @@ func (r *postgresEventRepository) FindBySlot(ctx context.Context, slot uint64, l
 }
 
 func (r *postgresEventRepository) queryEvents(ctx context.Context, query string, args ...interface{}) ([]*storage.EventModel, error) {
-	rows, err := r.pool.Query(ctx, query, args...)
+	return QueryMany(r.pool, ctx, query, scanEvent, args...)
+}
+
+func scanEvent(rows pgx.Rows) (*storage.EventModel, error) {
+	var event storage.EventModel
+	var dataJSON []byte
+
+	err := rows.Scan(
+		&event.ID, &event.Signature, &event.ProgramID, &event.EventName,
+		&dataJSON, &event.Slot, &event.BlockTime, &event.CreatedAt,
+	)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
-	var events []*storage.EventModel
-	for rows.Next() {
-		var event storage.EventModel
-		var dataJSON []byte
-
-		if err := rows.Scan(
-			&event.ID, &event.Signature, &event.ProgramID, &event.EventName,
-			&dataJSON, &event.Slot, &event.BlockTime, &event.CreatedAt,
-		); err != nil {
-			return nil, err
-		}
-
-		if err := json.Unmarshal(dataJSON, &event.Data); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal event data: %w", err)
-		}
-
-		events = append(events, &event)
+	if err := json.Unmarshal(dataJSON, &event.Data); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal event data: %w", err)
 	}
 
-	return events, rows.Err()
+	return &event, nil
 }
 
 type postgresTokenAccountRepository struct {
@@ -492,7 +441,7 @@ func (r *postgresTokenAccountRepository) SaveBatch(ctx context.Context, tokenAcc
 		return nil
 	}
 
-	batch := &pgx.Batch{}
+	helper := storage.NewPostgresBatchHelper(r.pool)
 	query := `
 		INSERT INTO token_accounts (id, address, mint, owner, amount, decimals, delegate, delegated_amount, is_native, close_authority, slot, updated_at, created_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
@@ -501,25 +450,15 @@ func (r *postgresTokenAccountRepository) SaveBatch(ctx context.Context, tokenAcc
 			delegated_amount = $8, is_native = $9, close_authority = $10, slot = $11, updated_at = $12
 	`
 
-	for _, ta := range tokenAccounts {
+	return helper.BatchInsert(ctx, query, len(tokenAccounts), func(batch *pgx.Batch, i int) {
+		ta := tokenAccounts[i]
 		batch.Queue(query,
 			ta.ID, ta.Address, ta.Mint, ta.Owner,
 			ta.Amount, ta.Decimals, ta.Delegate, ta.DelegatedAmount,
 			ta.IsNative, ta.CloseAuthority, ta.Slot,
 			ta.UpdatedAt, ta.CreatedAt,
 		)
-	}
-
-	br := r.pool.SendBatch(ctx, batch)
-	defer br.Close()
-
-	for range tokenAccounts {
-		if _, err := br.Exec(); err != nil {
-			return err
-		}
-	}
-
-	return br.Close()
+	})
 }
 
 func (r *postgresTokenAccountRepository) FindByAddress(ctx context.Context, address string) (*storage.TokenAccountModel, error) {
@@ -557,27 +496,18 @@ func (r *postgresTokenAccountRepository) FindByMint(ctx context.Context, mint st
 }
 
 func (r *postgresTokenAccountRepository) queryTokenAccounts(ctx context.Context, query string, args ...interface{}) ([]*storage.TokenAccountModel, error) {
-	rows, err := r.pool.Query(ctx, query, args...)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
+	return QueryMany(r.pool, ctx, query, scanTokenAccount, args...)
+}
 
-	var tokenAccounts []*storage.TokenAccountModel
-	for rows.Next() {
-		var ta storage.TokenAccountModel
-		if err := rows.Scan(
-			&ta.ID, &ta.Address, &ta.Mint, &ta.Owner,
-			&ta.Amount, &ta.Decimals, &ta.Delegate, &ta.DelegatedAmount,
-			&ta.IsNative, &ta.CloseAuthority, &ta.Slot,
-			&ta.UpdatedAt, &ta.CreatedAt,
-		); err != nil {
-			return nil, err
-		}
-		tokenAccounts = append(tokenAccounts, &ta)
-	}
-
-	return tokenAccounts, rows.Err()
+func scanTokenAccount(rows pgx.Rows) (*storage.TokenAccountModel, error) {
+	var ta storage.TokenAccountModel
+	err := rows.Scan(
+		&ta.ID, &ta.Address, &ta.Mint, &ta.Owner,
+		&ta.Amount, &ta.Decimals, &ta.Delegate, &ta.DelegatedAmount,
+		&ta.IsNative, &ta.CloseAuthority, &ta.Slot,
+		&ta.UpdatedAt, &ta.CreatedAt,
+	)
+	return &ta, err
 }
 
 func init() {

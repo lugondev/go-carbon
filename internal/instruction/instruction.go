@@ -583,17 +583,7 @@ func (m *MultiInstructionPipe) Run(
 	metricsCollection *metrics.Collection,
 ) error {
 	for _, pipe := range m.pipes {
-		// Check filters
-		filters := pipe.GetFilters()
-		passesFilters := true
-		for _, f := range filters {
-			if !f.FilterInstruction(datasourceID, nestedInstruction) {
-				passesFilters = false
-				break
-			}
-		}
-
-		if !passesFilters {
+		if !filter.CheckInstructionFilters(datasourceID, pipe.GetFilters(), nestedInstruction) {
 			continue
 		}
 

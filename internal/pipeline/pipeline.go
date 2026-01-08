@@ -335,21 +335,13 @@ func (p *Pipeline) processAccountUpdate(
 	metadata := account.NewAccountMetadata(update)
 
 	for _, pipe := range p.AccountPipes {
-		// Check filters
-		filters := pipe.GetFilters()
-		passesFilters := true
-		for _, f := range filters {
-			if !f.FilterAccount(datasourceID, &filter.AccountMetadata{
-				Slot:                 metadata.Slot,
-				Pubkey:               metadata.Pubkey,
-				TransactionSignature: metadata.TransactionSignature,
-			}, &update.Account) {
-				passesFilters = false
-				break
-			}
+		accountMetadata := &filter.AccountMetadata{
+			Slot:                 metadata.Slot,
+			Pubkey:               metadata.Pubkey,
+			TransactionSignature: metadata.TransactionSignature,
 		}
 
-		if !passesFilters {
+		if !filter.CheckAccountFilters(datasourceID, pipe.GetFilters(), accountMetadata, &update.Account) {
 			continue
 		}
 
@@ -385,17 +377,7 @@ func (p *Pipeline) processTransactionUpdate(
 	// Process through instruction pipes
 	for _, pipe := range p.InstructionPipes {
 		for _, nestedIx := range nestedInstructions.Instructions {
-			// Check filters
-			filters := pipe.GetFilters()
-			passesFilters := true
-			for _, f := range filters {
-				if !f.FilterInstruction(datasourceID, nestedIx) {
-					passesFilters = false
-					break
-				}
-			}
-
-			if !passesFilters {
+			if !filter.CheckInstructionFilters(datasourceID, pipe.GetFilters(), nestedIx) {
 				continue
 			}
 
@@ -407,17 +389,7 @@ func (p *Pipeline) processTransactionUpdate(
 
 	// Process through transaction pipes
 	for _, pipe := range p.TransactionPipes {
-		// Check filters
-		filters := pipe.GetFilters()
-		passesFilters := true
-		for _, f := range filters {
-			if !f.FilterTransaction(datasourceID, txMetadata, nestedInstructions) {
-				passesFilters = false
-				break
-			}
-		}
-
-		if !passesFilters {
+		if !filter.CheckTransactionFilters(datasourceID, pipe.GetFilters(), txMetadata, nestedInstructions) {
 			continue
 		}
 
@@ -509,17 +481,7 @@ func (p *Pipeline) processAccountDeletion(
 	}
 
 	for _, pipe := range p.AccountDeletionPipes {
-		// Check filters
-		filters := pipe.GetFilters()
-		passesFilters := true
-		for _, f := range filters {
-			if !f.FilterAccountDeletion(datasourceID, deletion) {
-				passesFilters = false
-				break
-			}
-		}
-
-		if !passesFilters {
+		if !filter.CheckAccountDeletionFilters(datasourceID, pipe.GetFilters(), deletion) {
 			continue
 		}
 
@@ -543,17 +505,7 @@ func (p *Pipeline) processBlockDetails(
 	}
 
 	for _, pipe := range p.BlockDetailsPipes {
-		// Check filters
-		filters := pipe.GetFilters()
-		passesFilters := true
-		for _, f := range filters {
-			if !f.FilterBlockDetails(datasourceID, details) {
-				passesFilters = false
-				break
-			}
-		}
-
-		if !passesFilters {
+		if !filter.CheckBlockDetailsFilters(datasourceID, pipe.GetFilters(), details) {
 			continue
 		}
 

@@ -366,17 +366,7 @@ func (m *MultiTransactionPipe) Run(
 	defer m.mu.RUnlock()
 
 	for _, pipe := range m.pipes {
-		// Check filters
-		filters := pipe.GetFilters()
-		passesFilters := true
-		for _, f := range filters {
-			if !f.FilterTransaction(datasourceID, metadata, nestedInstructions) {
-				passesFilters = false
-				break
-			}
-		}
-
-		if !passesFilters {
+		if !filter.CheckTransactionFilters(datasourceID, pipe.GetFilters(), metadata, nestedInstructions) {
 			continue
 		}
 

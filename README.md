@@ -11,14 +11,26 @@ A lightweight, modular Solana blockchain indexing framework written in Go. Go-Ca
 
 ## ✨ Features
 
+### Core Features
 - **🔥 Type-Safe Code Generation**: Generate production-ready Go code from Anchor IDL with Jennifer
 - **💾 Database Storage**: Persistent storage with MongoDB and PostgreSQL support
+  - Batch operations with optimized helpers
+  - Connection pooling and transaction support
+  - Schema migrations for PostgreSQL
 - **Modular Pipeline Architecture**: Flexible data processing with configurable datasources, processors, and pipes
 - **Multiple Data Types**: Support for account updates, transactions, account deletions, and block details
 - **Generic Processors**: Type-safe processors with Go generics
+
+### Event Processing
 - **🔌 Plugin System**: Extensible decoder and event processor plugins
 - **📝 Log Parser**: Extract and decode "Program data:" from transaction logs
 - **🎯 Event Decoder**: Decode Anchor events with discriminators and Borsh serialization
+
+### Developer Experience
+- **Reusable Utilities**: Centralized helpers for common operations
+  - Batch operation helpers (PostgreSQL & MongoDB)
+  - Filter checking utilities
+  - String case conversion utilities
 - **Pluggable Metrics**: Support for multiple metrics backends (Prometheus, logging, etc.)
 - **Graceful Shutdown**: Configurable shutdown strategies for clean termination
 - **Filter System**: Powerful filtering for selective data processing
@@ -518,11 +530,51 @@ go test ./pkg/plugin/...
 ## 📊 Project Statistics
 
 - **Total Code**: ~8,000+ lines of Go
-- **Public Packages**: 3 (`log`, `decoder`, `plugin`)
+- **Public Packages**: 4 (`log`, `decoder`, `plugin`, `utils`)
 - **Built-in Plugins**: 2 (SPL Token, Anchor)
 - **CLI Tools**: codegen, wallet
 - **Examples**: 7
+- **Code Quality**: Refactored with DRY principles (-212 lines duplication)
 - **Test Coverage**: Target >80% (work in progress)
+
+## 🏗️ Code Architecture
+
+### Reusable Components
+
+Go-Carbon provides several reusable utilities to simplify development:
+
+#### Batch Operations
+```go
+import "github.com/lugondev/go-carbon/internal/storage"
+
+// PostgreSQL batch helper
+helper := storage.NewPostgresBatchHelper(pool)
+helper.BatchInsert(ctx, query, itemCount, func(batch *pgx.Batch, i int) {
+    batch.Queue(query, items[i].Field1, items[i].Field2)
+})
+
+// MongoDB batch helper
+helper := storage.NewMongoBatchHelper[MyModel](collection)
+helper.BatchInsert(ctx, items)
+```
+
+#### Filter Utilities
+```go
+import "github.com/lugondev/go-carbon/internal/filter"
+
+// Centralized filter checking
+if filter.CheckAccountFilters(dsID, filters, metadata, account) {
+    // Process account
+}
+```
+
+#### String Utilities
+```go
+import "github.com/lugondev/go-carbon/pkg/utils"
+
+utils.ToPascalCase("my_field_name")  // MyFieldName
+utils.ToSnakeCase("MyFieldName")     // my_field_name
+```
 
 ## 🛣️ Roadmap
 
@@ -530,7 +582,7 @@ go test ./pkg/plugin/...
 
 - [x] Core pipeline architecture
 - [x] Account, Transaction, Instruction processing
-- [x] Filter system
+- [x] Filter system with helper utilities
 - [x] Metrics collection
 - [x] Instruction compilation implementation
 - [x] Log parser framework
@@ -544,6 +596,8 @@ go test ./pkg/plugin/...
 - [x] **Database storage layer (MongoDB & PostgreSQL)**
 - [x] **Schema migrations for PostgreSQL**
 - [x] **Batch operations for high throughput**
+- [x] **Code refactoring: DRY principles applied**
+- [x] **Reusable utility packages**
 
 ### 🚧 In Progress
 

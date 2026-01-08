@@ -20,17 +20,8 @@ func (r *mongoInstructionRepository) Save(ctx context.Context, instruction *stor
 }
 
 func (r *mongoInstructionRepository) SaveBatch(ctx context.Context, instructions []*storage.InstructionModel) error {
-	if len(instructions) == 0 {
-		return nil
-	}
-
-	docs := make([]interface{}, len(instructions))
-	for i, inst := range instructions {
-		docs[i] = inst
-	}
-
-	_, err := r.collection.InsertMany(ctx, docs)
-	return err
+	helper := storage.NewMongoBatchHelper[*storage.InstructionModel](r.collection)
+	return helper.InsertMany(ctx, instructions)
 }
 
 func (r *mongoInstructionRepository) FindBySignature(ctx context.Context, signature string) ([]*storage.InstructionModel, error) {
@@ -73,17 +64,8 @@ func (r *mongoEventRepository) Save(ctx context.Context, event *storage.EventMod
 }
 
 func (r *mongoEventRepository) SaveBatch(ctx context.Context, events []*storage.EventModel) error {
-	if len(events) == 0 {
-		return nil
-	}
-
-	docs := make([]interface{}, len(events))
-	for i, evt := range events {
-		docs[i] = evt
-	}
-
-	_, err := r.collection.InsertMany(ctx, docs)
-	return err
+	helper := storage.NewMongoBatchHelper[*storage.EventModel](r.collection)
+	return helper.InsertMany(ctx, events)
 }
 
 func (r *mongoEventRepository) FindBySignature(ctx context.Context, signature string) ([]*storage.EventModel, error) {

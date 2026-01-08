@@ -269,21 +269,13 @@ func (m *MultiAccountPipe) Run(
 	metricsCollection *metrics.Collection,
 ) error {
 	for _, pipe := range m.pipes {
-		// Check filters
-		filters := pipe.GetFilters()
-		passesFilters := true
-		for _, f := range filters {
-			if !f.FilterAccount(datasourceID, &filter.AccountMetadata{
-				Slot:                 metadata.Slot,
-				Pubkey:               metadata.Pubkey,
-				TransactionSignature: metadata.TransactionSignature,
-			}, account) {
-				passesFilters = false
-				break
-			}
+		accountMetadata := &filter.AccountMetadata{
+			Slot:                 metadata.Slot,
+			Pubkey:               metadata.Pubkey,
+			TransactionSignature: metadata.TransactionSignature,
 		}
 
-		if !passesFilters {
+		if !filter.CheckAccountFilters(datasourceID, pipe.GetFilters(), accountMetadata, account) {
 			continue
 		}
 
