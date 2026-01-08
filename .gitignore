@@ -66,3 +66,10 @@ examples/*/alerts
 examples/*/basic
 examples/*/event-parser
 examples/*/pipeline-with-events
+
+# Jekyll
+docs/_site/
+docs/.jekyll-cache/
+docs/.sass-cache/
+docs/Gemfile.lock
+docs/.bundle/

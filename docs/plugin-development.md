@@ -1,3 +1,11 @@
+---
+layout: default
+title: Plugin Development
+nav_order: 6
+description: "Create custom event decoders and processors for go-carbon"
+permalink: /plugin-development
+---
+
 # Plugin Development Guide
 
 This guide explains how to create custom plugins for go-carbon to decode and process blockchain events.

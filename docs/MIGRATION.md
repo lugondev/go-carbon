@@ -1,3 +1,11 @@
+---
+layout: default
+title: Migration Guide
+nav_order: 5
+description: "Migrate from old generator to Jennifer-based code generator"
+permalink: /migration
+---
+
 # Migration Guide: Old Generator → Jennifer Generator
 
 This guide helps you migrate from the old string-template based code generator to the new Jennifer-based generator.

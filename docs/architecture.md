@@ -1,6 +1,30 @@
-# Go-Carbon Architecture
+---
+layout: default
+title: Architecture
+nav_order: 3
+description: "Detailed overview of Go-Carbon framework architecture and components"
+permalink: /architecture
+---
 
-This document provides a detailed overview of the go-carbon framework architecture, its components, and how they interact.
+# Go-Carbon Architecture
+{: .no_toc }
+
+Detailed overview of the framework architecture, components, and how they interact
+{: .fs-6 .fw-300 }
+
+## Table of contents
+{: .no_toc .text-delta }
+
+1. TOC
+{:toc}
+
+---
+
+## Overview
+
+Go-Carbon is a modular, extensible framework for indexing and processing Solana blockchain data. It follows a pipeline architecture where data flows from datasources through processors, with support for filtering, metrics, and multiple output channels.
+
+---
 
 ## Overview
 
