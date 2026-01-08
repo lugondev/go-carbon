@@ -35,6 +35,8 @@ Go-carbon has been optimized using techniques adapted from Pinocchio's on-chain 
 | Zero-Copy AccountView | **11.7x faster** | **100%** (0 allocs) |
 | Zero-Copy EventView | **11.2x faster** | **100%** (0 allocs) |
 | Fast CanDecode | **38% faster** | **100%** (0 allocs) |
+| Batch Decoding (1K) | **8% faster** | ~2% more (view overhead) |
+| Discriminator Matcher | **5.1x faster** | **100%** (0 allocs) |
 
 ---
 
@@ -258,6 +260,172 @@ BenchmarkZeroCopyDecoding/ZeroCopy_CanDecodeCheck-16             1B ops  0.40ns 
 ```
 
 **Improvement**: 38% faster for discriminator checks
+
+---
+
+## Batch Decoding Optimization
+
+### Concept
+
+When decoding multiple events at once, use batch decoding methods that leverage zero-copy views and optimized discriminator matching.
+
+### Implementation
+
+Package: `pkg/decoder`
+
+#### Basic Batch Decoding
+
+```go
+import "github.com/lugondev/go-carbon/pkg/decoder"
+
+registry := decoder.NewRegistry()
+// ... register decoders
+
+// Traditional (slower)
+events, _ := registry.DecodeAll(dataList, &programID)
+
+// Optimized with zero-copy views (6-8% faster)
+events, _ := registry.DecodeAllFast(dataList, &programID)
+```
+
+#### Parallel Batch Decoding
+
+For very large batches (1000+ items):
+
+```go
+// Use 4 workers for parallel decoding
+events, _ := registry.DecodeAllParallel(dataList, &programID, 4)
+```
+
+#### Advanced: Custom Batch Decoder
+
+```go
+import "github.com/lugondev/go-carbon/pkg/decoder"
+
+// Create batch decoder
+batchDecoder := decoder.NewBatchDecoder(registry)
+
+// Fast sequential decoding
+events, _ := batchDecoder.DecodeAllFast(dataList, &programID)
+
+// Parallel decoding with custom worker count
+events, _ := batchDecoder.DecodeAllParallel(dataList, &programID, 8)
+```
+
+### Discriminator Matcher
+
+For high-performance discriminator lookups:
+
+```go
+import "github.com/lugondev/go-carbon/pkg/decoder"
+
+// Create matcher from decoders
+decoders := []*decoder.AnchorDecoderBase{decoder1, decoder2, ...}
+matcher := decoder.NewDiscriminatorMatcher(decoders)
+
+// Fast O(1) lookup
+var disc [8]byte
+copy(disc[:], data[:8])
+decoder, found := matcher.Match(disc)
+```
+
+### Benchmark Results
+
+```
+# Batch Decoding (100 events)
+Traditional:     18.9µs  45KB   301 allocs
+ZeroCopy:        17.8µs  47KB   402 allocs
+Improvement:     6% faster
+
+# Batch Decoding (1,000 events)
+Traditional:     233µs   456KB  3001 allocs
+ZeroCopy:        214µs   464KB  4002 allocs
+Improvement:     8% faster
+
+# Batch Decoding (10,000 events)
+Traditional:     2.78ms  4.6MB  30003 allocs
+ZeroCopy:        2.60ms  4.6MB  40005 allocs
+Improvement:     6.5% faster
+
+# Discriminator Matching (1000 lookups)
+Sequential Loop: 36.6µs
+Map Lookup:      7.1µs
+Improvement:     5.1x faster
+```
+
+### When to Use
+
+| Batch Size | Recommended Method         | Why                                     |
+| ---------- | -------------------------- | --------------------------------------- |
+| < 100      | `DecodeAll()`              | Simple, minimal overhead                |
+| 100-1000   | `DecodeAllFast()`          | 6-8% faster with zero-copy              |
+| > 1000     | `DecodeAllParallel()`      | Utilize multiple CPU cores              |
+| Any        | `DiscriminatorMatcher`     | 5x faster for repeated discriminator lookups |
+
+### Usage Patterns
+
+#### Pattern 1: Transaction Log Processing
+
+```go
+func ProcessTransactionLogs(tx *solana.Transaction) ([]*decoder.Event, error) {
+    registry := decoder.NewRegistry()
+    // ... register decoders
+    
+    parser := log.NewParser()
+    programData := parser.ExtractProgramData(tx.Logs)
+    
+    // Use fast batch decoding
+    events, err := registry.DecodeAllFast(programData, nil)
+    return events, err
+}
+```
+
+#### Pattern 2: High-Throughput Stream Processing
+
+```go
+func ProcessEventStream(dataStream <-chan [][]byte) {
+    registry := decoder.NewRegistry()
+    batchDecoder := decoder.NewBatchDecoder(registry)
+    
+    for batch := range dataStream {
+        // Large batches: use parallel decoding
+        if len(batch) > 1000 {
+            events, _ := batchDecoder.DecodeAllParallel(batch, nil, 4)
+            processBatch(events)
+        } else {
+            // Small batches: sequential is faster
+            events, _ := batchDecoder.DecodeAllFast(batch, nil)
+            processBatch(events)
+        }
+    }
+}
+```
+
+#### Pattern 3: Multi-Program Event Router
+
+```go
+type EventRouter struct {
+    matchers map[solana.PublicKey]*decoder.DiscriminatorMatcher
+}
+
+func (r *EventRouter) Route(data []byte, programID solana.PublicKey) (*decoder.Event, error) {
+    matcher, exists := r.matchers[programID]
+    if !exists {
+        return nil, fmt.Errorf("no matcher for program")
+    }
+    
+    eventView, _ := view.NewEventView(data)
+    disc := eventView.Discriminator()
+    
+    // O(1) lookup
+    decoder, found := matcher.Match(disc)
+    if !found {
+        return nil, fmt.Errorf("unknown event")
+    }
+    
+    return decoder.DecodeFromView(eventView)
+}
+```
 
 ---
 

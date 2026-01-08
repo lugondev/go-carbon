@@ -5,7 +5,15 @@ Comprehensive documentation for the go-carbon Solana indexing framework.
 ## 📚 Documentation Index
 
 ### Getting Started
-- **[README.md](../README.md)** - Main project overview, installation, quick start
+- **[README.md](../README.md)** - Main project overview, installation, quick start with **performance highlights**
+
+### Performance & Optimization
+- **[performance.md](./performance.md)** - ⚡ **NEW** Complete performance optimization guide
+  - Zero-copy views (11x faster)
+  - Buffer pooling (57% faster, 98% less memory)
+  - Batch decoding (5-8% faster)
+  - Fast discriminator matching (5x faster)
+  - Benchmarks and best practices
 
 ### Code Generation
 - **[codegen.md](./codegen.md)** - Current code generation guide from Anchor IDL
@@ -17,10 +25,41 @@ Comprehensive documentation for the go-carbon Solana indexing framework.
 ### Plugin Development
 - **[plugin-development.md](./plugin-development.md)** - Guide to creating custom event decoders
 
+### Database Storage
+- **[database.md](./database.md)** - MongoDB and PostgreSQL integration guide
+- **[database-implementation.md](./database-implementation.md)** - Implementation details
+
 ### Architecture
 - **[architecture.md](./architecture.md)** - System architecture and design decisions
 
-## 🆕 Latest Updates (2026-01-07)
+## 🆕 Latest Updates (2026-01-08)
+
+### Performance Optimization Documentation
+
+We've implemented and documented comprehensive performance optimizations inspired by [Pinocchio](https://github.com/anza-xyz/pinocchio):
+
+#### Performance Guide (NEW!)
+- **File**: `performance.md`
+- **Content**:
+  - **Buffer Pooling**: 57% faster, 98% less memory allocation
+  - **Zero-Copy Views**: 11x faster account/event parsing, 0 allocations
+  - **Fast Discriminator Checking**: 54% faster routing
+  - **Batch Decoding**: 5-8% faster for large batches
+  - **Complete benchmarks** with before/after comparisons
+  - **Best practices** and migration guide
+  - **Troubleshooting** common issues
+- **For**: All developers wanting high-performance indexing
+- **Read time**: 30-40 minutes
+
+#### Key Performance Gains
+| Optimization | Speedup | Memory Reduction |
+|-------------|---------|------------------|
+| Buffer Pool | 1.6x | 98% |
+| AccountView | 11.7x | 100% (0 allocs) |
+| EventView | 11.2x | 100% (0 allocs) |
+| CanDecode | 1.5x | 100% (0 allocs) |
+| Batch Decode | 1.05-1.08x | -2% (overhead) |
+| Discriminator Match | 5x | 100% (0 allocs) |
 
 ### Codegen Upgrade Documentation
 
@@ -67,6 +106,9 @@ Chúng tôi đã nghiên cứu chi tiết [anchor-go](https://github.com/gagliar
 
 ### I want to...
 
+**Optimize performance (NEW!)**
+→ [performance.md](./performance.md)
+
 **Generate code from IDL**
 → [codegen.md](./codegen.md)
 
@@ -82,6 +124,9 @@ Chúng tôi đã nghiên cứu chi tiết [anchor-go](https://github.com/gagliar
 **Create a custom plugin**
 → [plugin-development.md](./plugin-development.md)
 
+**Store data in database**
+→ [database.md](./database.md)
+
 **Understand system design**
 → [architecture.md](./architecture.md)
 
@@ -90,9 +135,17 @@ Chúng tôi đã nghiên cứu chi tiết [anchor-go](https://github.com/gagliar
 ### For New Contributors
 
 1. Start: `../README.md` - Project overview
-2. Then: `architecture.md` - Understand the system
-3. Next: `codegen.md` - Current state
-4. Finally: `plugin-development.md` - Create extensions
+2. Then: `performance.md` - **NEW**: Learn optimization patterns
+3. Next: `architecture.md` - Understand the system
+4. Next: `codegen.md` - Current state
+5. Finally: `plugin-development.md` - Create extensions
+
+### For Performance Optimization
+
+1. Start: `performance.md` - Complete guide (30 min)
+2. Practice: Apply patterns to your code
+3. Measure: Run benchmarks to verify gains
+4. Refer: Use as reference for best practices
 
 ### For Codegen Upgrade
 

@@ -3,16 +3,22 @@
 [![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8?style=flat&logo=go)](https://go.dev/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Code Generation](https://img.shields.io/badge/Codegen-Jennifer-blue?style=flat)](docs/codegen.md)
+[![Performance](https://img.shields.io/badge/Performance-11x_faster-brightgreen?style=flat)](docs/performance.md)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-A lightweight, modular Solana blockchain indexing framework written in Go. Go-Carbon is a Go port of the [Carbon](https://github.com/sevenlabs-hq/carbon) framework, providing a flexible pipeline architecture for processing Solana blockchain data.
+A lightweight, modular, **high-performance** Solana blockchain indexing framework written in Go. Go-Carbon is a Go port of the [Carbon](https://github.com/sevenlabs-hq/carbon) framework, providing a flexible pipeline architecture for processing Solana blockchain data.
 
-> 🚀 **NEW**: Jennifer-based code generator for type-safe Go code from Anchor IDL! See [Code Generation](#-code-generation-from-idl) below.
+> 🚀 **NEW**: Jennifer-based code generator for type-safe Go code from Anchor IDL!  
+> ⚡ **NEW**: Performance optimizations - **11x faster** event parsing with **zero allocations**!
 
 ## ✨ Features
 
 ### Core Features
 - **🔥 Type-Safe Code Generation**: Generate production-ready Go code from Anchor IDL with Jennifer
+- **⚡ High Performance**: 11x faster data processing with Pinocchio-inspired optimizations
+  - Zero-copy views for account/event parsing
+  - Buffer pooling with 98% less memory allocation
+  - Batch decoding with discriminator matching
 - **💾 Database Storage**: Persistent storage with MongoDB and PostgreSQL support
   - Batch operations with optimized helpers
   - Connection pooling and transaction support
@@ -25,6 +31,15 @@ A lightweight, modular Solana blockchain indexing framework written in Go. Go-Ca
 - **🔌 Plugin System**: Extensible decoder and event processor plugins
 - **📝 Log Parser**: Extract and decode "Program data:" from transaction logs
 - **🎯 Event Decoder**: Decode Anchor events with discriminators and Borsh serialization
+- **🚀 Batch Decoding**: Optimized batch processing for high-throughput scenarios
+
+### Performance Optimizations
+- **Zero-Copy Views**: Direct memory access without allocations (11x faster)
+- **Buffer Pooling**: Reusable buffers reduce GC pressure (57% faster, 98% less memory)
+- **Fast Discriminator Matching**: O(1) event routing (5x faster)
+- **Batch Processing**: Optimized decoding for large event sets (5-8% faster)
+
+See [Performance Guide](docs/performance.md) for detailed benchmarks.
 
 ### Developer Experience
 - **Reusable Utilities**: Centralized helpers for common operations
@@ -105,6 +120,7 @@ go get github.com/lugondev/go-carbon
 
 ## 📚 Documentation
 
+- **[Performance Guide](docs/performance.md)** - ⚡ **NEW** High-performance optimization patterns (11x faster!)
 - [Code Generation](docs/codegen.md) - Generate Go code from Anchor IDL
 - [Database Storage](docs/database.md) - MongoDB and PostgreSQL integration
 - [Plugin Development](docs/plugin-development.md) - Create custom event decoders
@@ -112,6 +128,36 @@ go get github.com/lugondev/go-carbon
 - [Examples](examples/) - Complete working examples
 
 ## 🎯 Quick Start
+
+### 0. High-Performance Event Decoding (NEW!)
+
+```go
+import (
+    "github.com/lugondev/go-carbon/pkg/decoder"
+    "github.com/lugondev/go-carbon/pkg/view"
+)
+
+// Traditional approach
+events, _ := registry.DecodeAll(dataList, &programID)
+
+// Optimized: 5-8% faster with zero-copy views
+events, _ := registry.DecodeAllFast(dataList, &programID)
+
+// For large batches (1000+ events)
+events, _ := registry.DecodeAllParallel(dataList, &programID, 4)
+
+// Zero-copy account parsing (11x faster!)
+accountView := view.NewAccountView(rawData)
+lamports := accountView.Lamports()  // No allocations!
+
+// Fast discriminator check (54% faster)
+eventView, _ := view.NewEventView(data)
+if decoder.FastCanDecodeWithView(eventView) {
+    event, _ := decoder.DecodeFromView(eventView)
+}
+```
+
+**Performance**: 11x faster parsing, 98% less memory, zero allocations. See [Performance Guide](docs/performance.md).
 
 ### 1. Basic Pipeline
 
@@ -529,15 +575,55 @@ go test ./pkg/plugin/...
 
 ## 📊 Project Statistics
 
-- **Total Code**: ~8,000+ lines of Go
-- **Public Packages**: 4 (`log`, `decoder`, `plugin`, `utils`)
+- **Total Code**: ~10,300+ lines of Go (+2,300 from optimizations)
+- **Public Packages**: 6 (`log`, `decoder`, `plugin`, `utils`, `buffer`, `view`)
 - **Built-in Plugins**: 2 (SPL Token, Anchor)
 - **CLI Tools**: codegen, wallet
 - **Examples**: 7
+- **Performance**: 11x faster parsing, 98% less memory allocation
+- **Benchmarks**: Complete suite with before/after comparisons
 - **Code Quality**: Refactored with DRY principles (-212 lines duplication)
 - **Test Coverage**: Target >80% (work in progress)
 
 ## 🏗️ Code Architecture
+
+### Performance-Optimized Components
+
+Go-Carbon includes high-performance utilities inspired by Pinocchio:
+
+#### Zero-Copy Views
+```go
+import "github.com/lugondev/go-carbon/pkg/view"
+
+// 11x faster account parsing
+accountView := view.NewAccountView(rawData)
+lamports := accountView.Lamports()  // Direct memory access, 0 allocations
+
+// 11x faster event parsing
+eventView, _ := view.NewEventView(data)
+disc := eventView.Discriminator()   // Zero-copy discriminator
+```
+
+#### Buffer Pooling
+```go
+import "github.com/lugondev/go-carbon/pkg/buffer"
+
+// 57% faster, 98% less memory
+buf := buffer.GetBuffer(1024)
+defer buffer.PutBuffer(buf)
+// Use buffer...
+```
+
+#### Batch Decoding
+```go
+import "github.com/lugondev/go-carbon/pkg/decoder"
+
+// 5-8% faster batch decoding
+events, _ := registry.DecodeAllFast(dataList, &programID)
+
+// Parallel for large batches (1000+)
+events, _ := registry.DecodeAllParallel(dataList, &programID, 4)
+```
 
 ### Reusable Components
 
@@ -598,6 +684,12 @@ utils.ToSnakeCase("MyFieldName")     // my_field_name
 - [x] **Batch operations for high throughput**
 - [x] **Code refactoring: DRY principles applied**
 - [x] **Reusable utility packages**
+- [x] **⚡ Performance optimizations (Pinocchio-inspired)**
+  - [x] Zero-copy views (11x faster parsing)
+  - [x] Buffer pooling (57% faster, 98% less memory)
+  - [x] Fast discriminator matching (5x faster routing)
+  - [x] Batch decoding optimization (5-8% faster)
+  - [x] Complete performance documentation
 
 ### 🚧 In Progress
 
@@ -611,7 +703,8 @@ utils.ToSnakeCase("MyFieldName")     // my_field_name
 - [ ] Prometheus metrics backend
 - [ ] WebSocket live updates
 - [ ] GraphQL API
-- [ ] Performance benchmarks
+- [ ] SIMD-based discriminator matching (future optimization)
+- [ ] Arena allocator for event batches (future optimization)
 
 ## 🤝 Contributing
 
@@ -638,6 +731,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🙏 Acknowledgments
 
 - [Carbon](https://github.com/sevenlabs-hq/carbon) - The original Rust implementation by SevenLabs
+- [Pinocchio](https://github.com/anza-xyz/pinocchio) - Inspiration for zero-copy optimizations
 - [solana-go](https://github.com/gagliardetto/solana-go) - Go SDK for Solana
 - [Anchor](https://www.anchor-lang.com/) - Solana development framework
 

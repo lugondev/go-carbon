@@ -179,6 +179,22 @@ func parseAndProcessLogs(ctx context.Context, registry *plugin.Registry, logs []
 	// Get decoder registry from plugins
 	decoderRegistry := registry.GetDecoderRegistry()
 
+	// 🚀 PERFORMANCE TIP: For high-throughput scenarios with multiple events:
+	// Instead of decoding one-by-one in a loop, use optimized batch decoding:
+	//
+	//   if len(programData) < 1000 {
+	//       // Fast sequential with zero-copy views (5-8% faster)
+	//       events, _ := decoderRegistry.DecodeAllFast(programData, &ExampleProgramID)
+	//   } else {
+	//       // Parallel for large batches (1000+ events)
+	//       events, _ := decoderRegistry.DecodeAllParallel(programData, &ExampleProgramID, 4)
+	//   }
+	//   for _, event := range events {
+	//       registry.ProcessEvent(ctx, event)
+	//   }
+	//
+	// See: docs/performance-quick-reference.md for complete guide
+
 	// Decode each program data entry
 	for i, data := range programData {
 		event, err := decoderRegistry.Decode(data, &ExampleProgramID)
@@ -232,6 +248,26 @@ func computeAnchorDiscriminator(eventName string) decoder.AnchorDiscriminator {
 }
 
 // decodeSwapExecutedEvent decodes the SwapExecuted event from Borsh data.
+//
+// 🚀 PERFORMANCE TIP: For hot-path event decoding (11x faster):
+// Use zero-copy views to avoid allocations:
+//
+//	import "github.com/lugondev/go-carbon/pkg/view"
+//	import "encoding/binary"
+//
+//	eventView, err := view.NewEventView(data)
+//	if err != nil {
+//	    return nil, err
+//	}
+//	eventData := eventView.Data() // Zero-copy slice after discriminator
+//
+//	// Direct memory access with binary.LittleEndian (0 allocations)
+//	event := &SwapExecutedEvent{}
+//	copy(event.User[:], eventData[0:32])
+//	event.AmountIn = binary.LittleEndian.Uint64(eventData[96:104])
+//	// ... etc
+//
+// See: docs/performance.md "Zero-Copy Event Parsing" section
 func decodeSwapExecutedEvent(data []byte) (*SwapExecutedEvent, error) {
 	// Expected structure (all little-endian):
 	// - user: 32 bytes (Pubkey)

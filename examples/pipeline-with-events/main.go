@@ -166,6 +166,17 @@ func (idx *EventIndexer) ProcessTransactionLogs(ctx context.Context, logs []stri
 		"signature", signature,
 	)
 
+	// 🚀 PERFORMANCE TIP: Use batch decoding for better throughput
+	// This example uses sequential decode, but for production with many events:
+	//
+	//   events, _ := idx.decoderRegistry.DecodeAllFast(programData, nil)
+	//   for _, event := range events {
+	//       idx.pluginRegistry.ProcessEvent(ctx, event)
+	//   }
+	//
+	// Benefits: 5-8% faster for batches, reduces overhead
+	// See: docs/performance-quick-reference.md
+
 	// Decode each event
 	for i, data := range programData {
 		event, err := idx.decoderRegistry.Decode(data, nil)
