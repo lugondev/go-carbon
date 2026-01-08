@@ -12,6 +12,7 @@ A lightweight, modular Solana blockchain indexing framework written in Go. Go-Ca
 ## ✨ Features
 
 - **🔥 Type-Safe Code Generation**: Generate production-ready Go code from Anchor IDL with Jennifer
+- **💾 Database Storage**: Persistent storage with MongoDB and PostgreSQL support
 - **Modular Pipeline Architecture**: Flexible data processing with configurable datasources, processors, and pipes
 - **Multiple Data Types**: Support for account updates, transactions, account deletions, and block details
 - **Generic Processors**: Type-safe processors with Go generics
@@ -93,6 +94,7 @@ go get github.com/lugondev/go-carbon
 ## 📚 Documentation
 
 - [Code Generation](docs/codegen.md) - Generate Go code from Anchor IDL
+- [Database Storage](docs/database.md) - MongoDB and PostgreSQL integration
 - [Plugin Development](docs/plugin-development.md) - Create custom event decoders
 - [Architecture](docs/architecture.md) - System architecture overview
 - [Examples](examples/) - Complete working examples
@@ -202,6 +204,44 @@ func decodeSwapEvent(data []byte) (interface{}, error) {
     return event, nil
 }
 ```
+
+### 3. Database Storage (Optional)
+
+Store blockchain data to MongoDB or PostgreSQL:
+
+```go
+import (
+    "github.com/lugondev/go-carbon/internal/storage"
+    "github.com/lugondev/go-carbon/internal/processor/database"
+    _ "github.com/lugondev/go-carbon/internal/storage/mongo"
+    _ "github.com/lugondev/go-carbon/internal/storage/postgres"
+)
+
+func main() {
+    cfg := &config.Config{
+        Database: config.DatabaseConfig{
+            Enabled: true,
+            Type:    "postgres",
+            Postgres: config.PostgresConfig{
+                Host:     "localhost",
+                Port:     5432,
+                User:     "carbon",
+                Password: "carbon123",
+                Database: "carbon_db",
+            },
+        },
+    }
+
+    connMgr, _ := storage.NewConnectionManager(&cfg.Database)
+    repo, _ := connMgr.Connect(ctx)
+    defer connMgr.Close()
+
+    dbProcessor := database.NewDatasourceProcessor(repo, logger)
+    dbProcessor.ProcessAccountUpdate(ctx, accountUpdate)
+}
+```
+
+See [Database Documentation](docs/database.md) for details.
 
 ## 🔌 Creating a Custom Plugin
 
@@ -374,6 +414,7 @@ func main() {
 - [Event Parser](examples/event-parser/) - Parse and decode events
 - [Pipeline with Events](examples/pipeline-with-events/) - Full integration
 - [Token Tracker](examples/token-tracker/) - Track token transfers
+- [Database Storage](examples/database-storage/) - Store data in MongoDB/PostgreSQL
 - [Alerts](examples/alerts/) - Alert system for specific events
 - [Code Generation](examples/codegen/) - Generate code from IDL
 
@@ -480,7 +521,7 @@ go test ./pkg/plugin/...
 - **Public Packages**: 3 (`log`, `decoder`, `plugin`)
 - **Built-in Plugins**: 2 (SPL Token, Anchor)
 - **CLI Tools**: codegen, wallet
-- **Examples**: 6
+- **Examples**: 7
 - **Test Coverage**: Target >80% (work in progress)
 
 ## 🛣️ Roadmap
@@ -500,6 +541,9 @@ go test ./pkg/plugin/...
 - [x] Comprehensive examples
 - [x] Plugin development documentation
 - [x] **Code generation from Anchor IDL**
+- [x] **Database storage layer (MongoDB & PostgreSQL)**
+- [x] **Schema migrations for PostgreSQL**
+- [x] **Batch operations for high throughput**
 
 ### 🚧 In Progress
 
@@ -513,7 +557,6 @@ go test ./pkg/plugin/...
 - [ ] Prometheus metrics backend
 - [ ] WebSocket live updates
 - [ ] GraphQL API
-- [ ] Database integrations (PostgreSQL, MongoDB)
 - [ ] Performance benchmarks
 
 ## 🤝 Contributing

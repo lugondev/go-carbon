@@ -9,8 +9,9 @@ import (
 
 // Config holds all configuration for the application
 type Config struct {
-	Solana SolanaConfig `mapstructure:"solana"`
-	Log    LogConfig    `mapstructure:"log"`
+	Solana   SolanaConfig   `mapstructure:"solana"`
+	Log      LogConfig      `mapstructure:"log"`
+	Database DatabaseConfig `mapstructure:"database"`
 }
 
 // SolanaConfig holds Solana-specific configuration
@@ -26,6 +27,36 @@ type LogConfig struct {
 	Format string `mapstructure:"format"` // json or text
 }
 
+// DatabaseConfig holds database configuration
+type DatabaseConfig struct {
+	Enabled  bool           `mapstructure:"enabled"`
+	Type     string         `mapstructure:"type"` // mongodb or postgres
+	MongoDB  MongoDBConfig  `mapstructure:"mongodb"`
+	Postgres PostgresConfig `mapstructure:"postgres"`
+}
+
+// MongoDBConfig holds MongoDB-specific configuration
+type MongoDBConfig struct {
+	URI            string `mapstructure:"uri"`
+	Database       string `mapstructure:"database"`
+	MaxPoolSize    uint64 `mapstructure:"max_pool_size"`
+	MinPoolSize    uint64 `mapstructure:"min_pool_size"`
+	ConnectTimeout int    `mapstructure:"connect_timeout"` // in seconds
+}
+
+// PostgresConfig holds PostgreSQL-specific configuration
+type PostgresConfig struct {
+	Host            string `mapstructure:"host"`
+	Port            int    `mapstructure:"port"`
+	User            string `mapstructure:"user"`
+	Password        string `mapstructure:"password"`
+	Database        string `mapstructure:"database"`
+	SSLMode         string `mapstructure:"ssl_mode"` // disable, require, verify-ca, verify-full
+	MaxOpenConns    int    `mapstructure:"max_open_conns"`
+	MaxIdleConns    int    `mapstructure:"max_idle_conns"`
+	ConnMaxLifetime int    `mapstructure:"conn_max_lifetime"` // in seconds
+}
+
 // DefaultConfig returns the default configuration
 func DefaultConfig() *Config {
 	return &Config{
@@ -37,6 +68,28 @@ func DefaultConfig() *Config {
 		Log: LogConfig{
 			Level:  "info",
 			Format: "text",
+		},
+		Database: DatabaseConfig{
+			Enabled: false,
+			Type:    "mongodb",
+			MongoDB: MongoDBConfig{
+				URI:            "mongodb://localhost:27017",
+				Database:       "carbon",
+				MaxPoolSize:    100,
+				MinPoolSize:    10,
+				ConnectTimeout: 10,
+			},
+			Postgres: PostgresConfig{
+				Host:            "localhost",
+				Port:            5432,
+				User:            "carbon",
+				Password:        "",
+				Database:        "carbon",
+				SSLMode:         "disable",
+				MaxOpenConns:    25,
+				MaxIdleConns:    5,
+				ConnMaxLifetime: 300,
+			},
 		},
 	}
 }

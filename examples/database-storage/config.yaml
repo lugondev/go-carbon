@@ -1,0 +1,30 @@
+database:
+  enabled: true
+  type: postgres
+
+  postgres:
+    host: localhost
+    port: 5432
+    user: carbon
+    password: carbon123
+    database: carbon_db
+    ssl_mode: disable
+    max_open_conns: 25
+    max_idle_conns: 5
+    conn_max_lifetime: 300
+
+  mongodb:
+    uri: mongodb://localhost:27017
+    database: carbon_db
+    max_pool_size: 100
+    min_pool_size: 10
+    connect_timeout: 10
+
+solana:
+  rpc: https://api.devnet.solana.com
+  network: devnet
+  timeout: 30
+
+log:
+  level: info
+  format: json
