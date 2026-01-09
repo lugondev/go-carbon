@@ -6,8 +6,7 @@ url: "https://lugondev.github.io"
 repository: lugondev/go-carbon
 edit_repository: https://github.com/lugondev/go-carbon
 
-# Use remote_theme for GitHub Pages deployment
-remote_theme: just-the-docs/just-the-docs@v0.7.0
+theme: just-the-docs
 
 # logo: "/assets/images/logo.png"
 
