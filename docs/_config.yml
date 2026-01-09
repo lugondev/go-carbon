@@ -6,9 +6,10 @@ url: "https://lugondev.github.io"
 repository: lugondev/go-carbon
 edit_repository: https://github.com/lugondev/go-carbon
 
+# Use theme instead of remote_theme for local development
 theme: just-the-docs
 
-logo: "/assets/images/logo.png"
+# logo: "/assets/images/logo.png"
 
 search_enabled: true
 search:
@@ -68,6 +69,7 @@ kramdown:
       line_numbers: true
 
 plugins:
+  - jekyll-remote-theme
   - jekyll-seo-tag
   - jekyll-github-metadata
   - jekyll-sitemap
