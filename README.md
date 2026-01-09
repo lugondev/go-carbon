@@ -19,10 +19,10 @@ A lightweight, modular, **high-performance** Solana blockchain indexing framewor
   - Zero-copy views for account/event parsing
   - Buffer pooling with 98% less memory allocation
   - Batch decoding with discriminator matching
-- **💾 Database Storage**: Persistent storage with MongoDB and PostgreSQL support
+- **💾 Database Storage**: Persistent storage with MongoDB, PostgreSQL, and MySQL support
   - Batch operations with optimized helpers
   - Connection pooling and transaction support
-  - Schema migrations for PostgreSQL
+  - Schema migrations for PostgreSQL and MySQL
 - **Modular Pipeline Architecture**: Flexible data processing with configurable datasources, processors, and pipes
 - **Multiple Data Types**: Support for account updates, transactions, account deletions, and block details
 - **Generic Processors**: Type-safe processors with Go generics
@@ -266,7 +266,7 @@ func decodeSwapEvent(data []byte) (interface{}, error) {
 
 ### 3. Database Storage (Optional)
 
-Store blockchain data to MongoDB or PostgreSQL:
+Store blockchain data to MongoDB, PostgreSQL, or MySQL:
 
 ```go
 import (
@@ -274,16 +274,17 @@ import (
     "github.com/lugondev/go-carbon/internal/processor/database"
     _ "github.com/lugondev/go-carbon/internal/storage/mongo"
     _ "github.com/lugondev/go-carbon/internal/storage/postgres"
+    _ "github.com/lugondev/go-carbon/internal/storage/mysql"
 )
 
 func main() {
     cfg := &config.Config{
         Database: config.DatabaseConfig{
             Enabled: true,
-            Type:    "postgres",
-            Postgres: config.PostgresConfig{
+            Type:    "mysql", // or "postgres" or "mongodb"
+            MySQL: config.MySQLConfig{
                 Host:     "localhost",
-                Port:     5432,
+                Port:     3306,
                 User:     "carbon",
                 Password: "carbon123",
                 Database: "carbon_db",
@@ -474,6 +475,7 @@ func main() {
 - [Pipeline with Events](examples/pipeline-with-events/) - Full integration
 - [Token Tracker](examples/token-tracker/) - Track token transfers
 - [Database Storage](examples/database-storage/) - Store data in MongoDB/PostgreSQL
+- [MySQL Storage](examples/mysql-storage/) - Store data in MySQL database
 - [Alerts](examples/alerts/) - Alert system for specific events
 - [Code Generation](examples/codegen/) - Generate code from IDL
 
@@ -680,8 +682,8 @@ utils.ToSnakeCase("MyFieldName")     // my_field_name
 - [x] Comprehensive examples
 - [x] Plugin development documentation
 - [x] **Code generation from Anchor IDL**
-- [x] **Database storage layer (MongoDB & PostgreSQL)**
-- [x] **Schema migrations for PostgreSQL**
+- [x] **Database storage layer (MongoDB, PostgreSQL & MySQL)**
+- [x] **Schema migrations for PostgreSQL and MySQL**
 - [x] **Batch operations for high throughput**
 - [x] **Code refactoring: DRY principles applied**
 - [x] **Reusable utility packages**

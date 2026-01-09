@@ -30,9 +30,10 @@ type LogConfig struct {
 // DatabaseConfig holds database configuration
 type DatabaseConfig struct {
 	Enabled  bool           `mapstructure:"enabled"`
-	Type     string         `mapstructure:"type"` // mongodb or postgres
+	Type     string         `mapstructure:"type"` // mongodb, postgres, or mysql
 	MongoDB  MongoDBConfig  `mapstructure:"mongodb"`
 	Postgres PostgresConfig `mapstructure:"postgres"`
+	MySQL    MySQLConfig    `mapstructure:"mysql"`
 }
 
 // MongoDBConfig holds MongoDB-specific configuration
@@ -51,10 +52,22 @@ type PostgresConfig struct {
 	User            string `mapstructure:"user"`
 	Password        string `mapstructure:"password"`
 	Database        string `mapstructure:"database"`
-	SSLMode         string `mapstructure:"ssl_mode"` // disable, require, verify-ca, verify-full
+	SSLMode         string `mapstructure:"ssl_mode"`
 	MaxOpenConns    int    `mapstructure:"max_open_conns"`
 	MaxIdleConns    int    `mapstructure:"max_idle_conns"`
-	ConnMaxLifetime int    `mapstructure:"conn_max_lifetime"` // in seconds
+	ConnMaxLifetime int    `mapstructure:"conn_max_lifetime"`
+}
+
+type MySQLConfig struct {
+	Host            string `mapstructure:"host"`
+	Port            int    `mapstructure:"port"`
+	User            string `mapstructure:"user"`
+	Password        string `mapstructure:"password"`
+	Database        string `mapstructure:"database"`
+	SSLMode         string `mapstructure:"ssl_mode"`
+	MaxOpenConns    int    `mapstructure:"max_open_conns"`
+	MaxIdleConns    int    `mapstructure:"max_idle_conns"`
+	ConnMaxLifetime int    `mapstructure:"conn_max_lifetime"`
 }
 
 // DefaultConfig returns the default configuration
@@ -86,6 +99,17 @@ func DefaultConfig() *Config {
 				Password:        "",
 				Database:        "carbon",
 				SSLMode:         "disable",
+				MaxOpenConns:    25,
+				MaxIdleConns:    5,
+				ConnMaxLifetime: 300,
+			},
+			MySQL: MySQLConfig{
+				Host:            "localhost",
+				Port:            3306,
+				User:            "carbon",
+				Password:        "",
+				Database:        "carbon",
+				SSLMode:         "false",
 				MaxOpenConns:    25,
 				MaxIdleConns:    5,
 				ConnMaxLifetime: 300,

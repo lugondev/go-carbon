@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -78,4 +79,45 @@ func (h *PostgresBatchHelper) BatchInsert(
 	}
 
 	return br.Close()
+}
+
+type MySQLBatchHelper struct {
+	db *sql.DB
+}
+
+func NewMySQLBatchHelper(db *sql.DB) *MySQLBatchHelper {
+	return &MySQLBatchHelper{
+		db: db,
+	}
+}
+
+func (h *MySQLBatchHelper) BatchInsert(
+	ctx context.Context,
+	query string,
+	items int,
+	prepareFunc func(stmt *sql.Stmt, index int) error,
+) error {
+	if items == 0 {
+		return nil
+	}
+
+	tx, err := h.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	stmt, err := tx.PrepareContext(ctx, query)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	for i := 0; i < items; i++ {
+		if err := prepareFunc(stmt, i); err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
 }

@@ -12,6 +12,7 @@ type DatabaseType string
 const (
 	DatabaseTypeMongoDB  DatabaseType = "mongodb"
 	DatabaseTypePostgres DatabaseType = "postgres"
+	DatabaseTypeMySQL    DatabaseType = "mysql"
 )
 
 type ConnectionManager struct {
@@ -42,6 +43,8 @@ func (cm *ConnectionManager) Connect(ctx context.Context) (Repository, error) {
 		repo, err = NewMongoRepositoryFromConfig(ctx, &cm.config.MongoDB)
 	case DatabaseTypePostgres:
 		repo, err = NewPostgresRepositoryFromConfig(ctx, &cm.config.Postgres)
+	case DatabaseTypeMySQL:
+		repo, err = NewMySQLRepositoryFromConfig(ctx, &cm.config.MySQL)
 	default:
 		return nil, fmt.Errorf("unsupported database type: %s", cm.config.Type)
 	}
