@@ -1,6 +1,7 @@
 package decoder
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"testing"
@@ -219,4 +220,81 @@ func BenchmarkBatchSizes(b *testing.B) {
 			}
 		})
 	}
+}
+
+func BenchmarkErrorCollection(b *testing.B) {
+	decoders, testData := createTestDecoders(10)
+	registry := NewRegistry()
+	programID := solana.MustPublicKeyFromBase58("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA")
+
+	for _, decoder := range decoders {
+		registry.RegisterForProgram(programID, decoder)
+	}
+	batchDecoder := NewBatchDecoder(registry)
+
+	testData = testData[:100]
+
+	b.Run("WithoutErrorCollection", func(b *testing.B) {
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_ = batchDecoder.DecodeAllFastWithOptions(testData, &programID, nil)
+		}
+	})
+
+	b.Run("WithErrorCollection", func(b *testing.B) {
+		opts := &BatchOptions{
+			CollectErrors: true,
+		}
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_ = batchDecoder.DecodeAllFastWithOptions(testData, &programID, opts)
+		}
+	})
+
+	b.Run("WithErrorCollectionAndLimit", func(b *testing.B) {
+		opts := &BatchOptions{
+			CollectErrors: true,
+			MaxErrors:     10,
+		}
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_ = batchDecoder.DecodeAllFastWithOptions(testData, &programID, opts)
+		}
+	})
+}
+
+func BenchmarkContextCancellation(b *testing.B) {
+	decoders, testData := createTestDecoders(10)
+	registry := NewRegistry()
+	programID := solana.MustPublicKeyFromBase58("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA")
+
+	for _, decoder := range decoders {
+		registry.RegisterForProgram(programID, decoder)
+	}
+	batchDecoder := NewBatchDecoder(registry)
+
+	largeData := make([][]byte, 10000)
+	for i := 0; i < len(largeData); i++ {
+		largeData[i] = testData[i%len(testData)]
+	}
+
+	b.Run("WithoutContext", func(b *testing.B) {
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_, _ = batchDecoder.DecodeAllParallel(largeData, &programID, 4)
+		}
+	})
+
+	b.Run("WithContext", func(b *testing.B) {
+		b.ReportAllocs()
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			ctx := context.Background()
+			_, _ = batchDecoder.DecodeAllParallelWithContext(ctx, largeData, &programID, 4)
+		}
+	})
 }

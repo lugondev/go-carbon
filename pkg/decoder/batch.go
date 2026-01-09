@@ -1,11 +1,36 @@
 package decoder
 
 import (
+	"context"
+	"fmt"
 	"sync"
 
 	"github.com/gagliardetto/solana-go"
 	"github.com/lugondev/go-carbon/pkg/view"
 )
+
+type BatchOptions struct {
+	CollectErrors bool
+	MaxErrors     int
+}
+
+type BatchResult struct {
+	Events []*Event
+	Errors []error
+}
+
+type DecodeError struct {
+	Index   int
+	Message string
+}
+
+func (e *DecodeError) Error() string {
+	return fmt.Sprintf("decode error at index %d: %s", e.Index, e.Message)
+}
+
+func newDecodeError(index int, message string) *DecodeError {
+	return &DecodeError{Index: index, Message: message}
+}
 
 type BatchDecoder struct {
 	registry *Registry
@@ -18,38 +43,72 @@ func NewBatchDecoder(registry *Registry) *BatchDecoder {
 }
 
 func (b *BatchDecoder) DecodeAllFast(dataList [][]byte, programID *solana.PublicKey) ([]*Event, error) {
-	if len(dataList) == 0 {
-		return nil, nil
+	result := b.DecodeAllFastWithOptions(dataList, programID, nil)
+	return result.Events, nil
+}
+
+func (b *BatchDecoder) DecodeAllFastWithOptions(dataList [][]byte, programID *solana.PublicKey, opts *BatchOptions) *BatchResult {
+	result := &BatchResult{
+		Events: make([]*Event, 0, len(dataList)),
+		Errors: make([]error, 0),
 	}
 
-	events := make([]*Event, 0, len(dataList))
+	if len(dataList) == 0 {
+		return result
+	}
+
+	collectErrors := opts != nil && opts.CollectErrors
+	maxErrors := 0
+	if opts != nil && opts.MaxErrors > 0 {
+		maxErrors = opts.MaxErrors
+	}
 
 	b.registry.mu.RLock()
 	decoders := b.getDecodersForProgram(programID)
 	b.registry.mu.RUnlock()
 
 	if len(decoders) == 0 {
-		return events, nil
+		return result
 	}
 
-	for _, data := range dataList {
+	for i, data := range dataList {
 		if len(data) < 8 {
+			if collectErrors {
+				result.Errors = append(result.Errors, newDecodeError(i, "data too short: need at least 8 bytes"))
+				if maxErrors > 0 && len(result.Errors) >= maxErrors {
+					break
+				}
+			}
 			continue
 		}
 
 		eventView, err := view.NewEventView(data)
 		if err != nil {
+			if collectErrors {
+				result.Errors = append(result.Errors, newDecodeError(i, fmt.Sprintf("failed to create event view: %v", err)))
+				if maxErrors > 0 && len(result.Errors) >= maxErrors {
+					break
+				}
+			}
 			continue
 		}
 
+		decoded := false
 		for _, decoder := range decoders {
 			anchorDecoder, ok := decoder.(*AnchorDecoderBase)
 			if !ok {
 				if decoder.CanDecode(data) {
 					event, err := decoder.Decode(data)
 					if err == nil && event != nil {
-						events = append(events, event)
+						result.Events = append(result.Events, event)
+						decoded = true
 						break
+					}
+					if collectErrors && err != nil {
+						result.Errors = append(result.Errors, newDecodeError(i, fmt.Sprintf("decode failed: %v", err)))
+						if maxErrors > 0 && len(result.Errors) >= maxErrors {
+							return result
+						}
 					}
 				}
 				continue
@@ -58,17 +117,68 @@ func (b *BatchDecoder) DecodeAllFast(dataList [][]byte, programID *solana.Public
 			if anchorDecoder.FastCanDecodeWithView(eventView) {
 				event, err := anchorDecoder.DecodeFromView(eventView)
 				if err == nil && event != nil {
-					events = append(events, event)
+					result.Events = append(result.Events, event)
+					decoded = true
 					break
 				}
+				if collectErrors && err != nil {
+					result.Errors = append(result.Errors, newDecodeError(i, fmt.Sprintf("anchor decode failed: %v", err)))
+					if maxErrors > 0 && len(result.Errors) >= maxErrors {
+						return result
+					}
+				}
+			}
+		}
+
+		if !decoded && collectErrors {
+			result.Errors = append(result.Errors, newDecodeError(i, "no decoder matched"))
+			if maxErrors > 0 && len(result.Errors) >= maxErrors {
+				break
 			}
 		}
 	}
 
-	return events, nil
+	return result
+}
+
+func (b *BatchDecoder) decodeSingleEvent(data []byte, decoders []Decoder) (*Event, error) {
+	if len(data) < 8 {
+		return nil, fmt.Errorf("data too short: need at least 8 bytes")
+	}
+
+	eventView, err := view.NewEventView(data)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create event view: %w", err)
+	}
+
+	for _, decoder := range decoders {
+		anchorDecoder, ok := decoder.(*AnchorDecoderBase)
+		if !ok {
+			if decoder.CanDecode(data) {
+				event, err := decoder.Decode(data)
+				if err == nil && event != nil {
+					return event, nil
+				}
+			}
+			continue
+		}
+
+		if anchorDecoder.FastCanDecodeWithView(eventView) {
+			event, err := anchorDecoder.DecodeFromView(eventView)
+			if err == nil && event != nil {
+				return event, nil
+			}
+		}
+	}
+
+	return nil, fmt.Errorf("no decoder matched")
 }
 
 func (b *BatchDecoder) DecodeAllParallel(dataList [][]byte, programID *solana.PublicKey, workers int) ([]*Event, error) {
+	return b.DecodeAllParallelWithContext(context.Background(), dataList, programID, workers)
+}
+
+func (b *BatchDecoder) DecodeAllParallelWithContext(ctx context.Context, dataList [][]byte, programID *solana.PublicKey, workers int) ([]*Event, error) {
 	if len(dataList) == 0 {
 		return nil, nil
 	}
@@ -80,6 +190,7 @@ func (b *BatchDecoder) DecodeAllParallel(dataList [][]byte, programID *solana.Pu
 	type result struct {
 		index int
 		event *Event
+		err   error
 	}
 
 	resultsChan := make(chan result, len(dataList))
@@ -89,10 +200,7 @@ func (b *BatchDecoder) DecodeAllParallel(dataList [][]byte, programID *solana.Pu
 
 	for i := 0; i < workers; i++ {
 		start := i * chunkSize
-		end := start + chunkSize
-		if end > len(dataList) {
-			end = len(dataList)
-		}
+		end := min(start+chunkSize, len(dataList))
 		if start >= len(dataList) {
 			break
 		}
@@ -106,35 +214,15 @@ func (b *BatchDecoder) DecodeAllParallel(dataList [][]byte, programID *solana.Pu
 			b.registry.mu.RUnlock()
 
 			for i, data := range chunk {
-				if len(data) < 8 {
-					continue
+				select {
+				case <-ctx.Done():
+					return
+				default:
 				}
 
-				eventView, err := view.NewEventView(data)
-				if err != nil {
-					continue
-				}
-
-				for _, decoder := range decoders {
-					anchorDecoder, ok := decoder.(*AnchorDecoderBase)
-					if !ok {
-						if decoder.CanDecode(data) {
-							event, err := decoder.Decode(data)
-							if err == nil && event != nil {
-								resultsChan <- result{index: startIdx + i, event: event}
-								break
-							}
-						}
-						continue
-					}
-
-					if anchorDecoder.FastCanDecodeWithView(eventView) {
-						event, err := anchorDecoder.DecodeFromView(eventView)
-						if err == nil && event != nil {
-							resultsChan <- result{index: startIdx + i, event: event}
-							break
-						}
-					}
+				event, err := b.decodeSingleEvent(data, decoders)
+				if err == nil && event != nil {
+					resultsChan <- result{index: startIdx + i, event: event}
 				}
 			}
 		}(dataList[start:end], start)
@@ -147,11 +235,20 @@ func (b *BatchDecoder) DecodeAllParallel(dataList [][]byte, programID *solana.Pu
 
 	resultsMap := make(map[int]*Event)
 	for res := range resultsChan {
-		resultsMap[res.index] = res.event
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		default:
+			resultsMap[res.index] = res.event
+		}
+	}
+
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
 	}
 
 	events := make([]*Event, 0, len(resultsMap))
-	for i := 0; i < len(dataList); i++ {
+	for i := range len(dataList) {
 		if event, exists := resultsMap[i]; exists {
 			events = append(events, event)
 		}
