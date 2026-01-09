@@ -125,6 +125,7 @@ go get github.com/lugondev/go-carbon
 - [Database Storage](docs/database.md) - MongoDB and PostgreSQL integration
 - [Plugin Development](docs/plugin-development.md) - Create custom event decoders
 - [Architecture](docs/architecture.md) - System architecture overview
+- [SIMD Research](docs/simd-research.md) - Analysis of SIMD optimization for discriminator matching
 - [Examples](examples/) - Complete working examples
 
 ## 🎯 Quick Start

@@ -52,7 +52,6 @@ func main() {
 	fmt.Println("=== Usage Example ===")
 	fmt.Println()
 	fmt.Println("After generation, you can use the generated code like this:")
-	fmt.Println()
 	fmt.Println(`
 package main
 
